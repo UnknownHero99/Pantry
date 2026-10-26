@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
 	import PrintPanel from '$lib/PrintPanel.svelte';
-	import { forget } from '$lib/catprinter.js';
+	import { forget, printerKind, labelLength } from '$lib/printer.js';
 	import { today, addDays } from '$lib/format.js';
 
 	let { data, form } = $props();
@@ -52,9 +52,24 @@
 
 <section class="card">
 	<h2>Label printer</h2>
-	<div class="sub">Bluetooth “cat” printer (C15, Fun Print models). Pick it from the list on first print.</div>
-	<label class="lbl" for="energy">Darkness <span class="hint">{energy}</span></label>
-	<input id="energy" type="range" min="4096" max="24576" step="1024" bind:value={energy} onchange={saveEnergy} style="width: 100%" />
+	<div class="sub">Pick it from Chrome's list on the first print; the app recognises which kind it is.</div>
+	<div class="seg" role="radiogroup" aria-label="Printer">
+		<label><input type="radio" name="kind" value="p15" bind:group={$printerKind} />P15 labels</label>
+		<label><input type="radio" name="kind" value="cat" bind:group={$printerKind} />C15 receipt</label>
+	</div>
+	{#if $printerKind === 'p15'}
+		<div class="lbl">Label length <span class="hint">die-cut labels, 12–15 mm wide</span></div>
+		<div class="seg" role="radiogroup" aria-label="Label length">
+			{#each [30, 40, 50] as mm}
+				<label><input type="radio" name="len" value={mm} bind:group={$labelLength} />{mm} mm</label>
+			{/each}
+		</div>
+		<p class="muted" style="font-size: 13px; margin: 8px 0 0">Marklife / Pristar P15, P12, L13. Close the Marklife app first: the printer takes one connection at a time.</p>
+	{:else}
+		<label class="lbl" for="energy">Darkness <span class="hint">{energy}</span></label>
+		<input id="energy" type="range" min="4096" max="24576" step="1024" bind:value={energy} onchange={saveEnergy} style="width: 100%" />
+		<p class="muted" style="font-size: 13px; margin: 8px 0 0">C15 and other Fun Print “cat” printers, 57 mm sticker rolls.</p>
+	{/if}
 	<PrintPanel labels={sample} />
 	<button class="ghost" style="margin-top: 8px" onclick={forget}>Forget printer</button>
 </section>

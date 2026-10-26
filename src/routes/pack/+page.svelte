@@ -1,8 +1,7 @@
 <script>
 	import { enhance } from '$app/forms';
 	import PrintPanel from '$lib/PrintPanel.svelte';
-	import { renderLabel } from '$lib/label.js';
-	import { supported } from '$lib/catprinter.js';
+	import { drawLabel, printerKind, labelLength, supported } from '$lib/printer.js';
 	import { today, addDays, fmtDate, span } from '$lib/format.js';
 
 	let { data, form } = $props();
@@ -55,7 +54,8 @@
 	$effect(() => {
 		canPrint = supported();
 		if (!preview) return;
-		const cv = renderLabel({
+		void $printerKind, $labelLength;
+		const cv = drawLabel({
 			id: data.nextId,
 			name: name || 'Your product',
 			amount: amountEach === '' ? null : Number(amountEach),
@@ -164,11 +164,11 @@
 		{/if}
 
 		<div style="display: flex; gap: 14px; align-items: center; margin-top: 18px">
-			<div class="label-preview" bind:this={preview} role="img" aria-label="Label preview"></div>
+			<div class="label-preview" class:strip={$printerKind === 'p15'} bind:this={preview} role="img" aria-label="Label preview"></div>
 			<div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted)">
 				<span>×{count} label{count === 1 ? '' : 's'}, #{String(data.nextId).padStart(6, '0')}{count > 1 ? `–${String(data.nextId + count - 1).padStart(6, '0')}` : ''}</span>
 				{#if !addNote}<button type="button" class="linkish" style="font-size: 13px; align-self: flex-start" onclick={() => (addNote = true)}>Add a note</button>{/if}
-				<span>{canPrint ? 'Prints on your Bluetooth label printer' : 'Printing needs Chrome on Android'}</span>
+				<span>{!canPrint ? 'Printing needs Chrome on Android' : $printerKind === 'p15' ? `P15 · ${$labelLength} mm labels` : 'C15 · receipt paper'} · <a href="/settings">change</a></span>
 			</div>
 		</div>
 		{#if addNote}
@@ -183,4 +183,5 @@
 <style>
 	.label-preview { flex: none; width: 196px; }
 	.label-preview :global(canvas) { width: 100%; height: auto; display: block; border-radius: 6px; box-shadow: var(--shadow); image-rendering: pixelated; }
+	.label-preview.strip { width: 210px; }
 </style>

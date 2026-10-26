@@ -68,19 +68,25 @@ card. Tabs: Stock · Shop · **Scan** (the big middle button) · Pack · More.
 Set **Min stock** on a product to have it appear on the shopping list.
 **Keeps (days)** pre-fills use-by when packing. It's learned from the first pack if blank.
 
-### Label printer (C15 / Fun Print cat printer)
+### Label printers
 
 Printing happens **from the phone over Web Bluetooth**: Chrome on Android, over HTTPS.
-On the first print, Chrome lists nearby Bluetooth devices; pick the printer (often shown
-as its model name). Then:
+On the first print, Chrome lists nearby Bluetooth devices; pick the printer. The app
+recognises which kind it is and draws the label for it. Choose the kind in **Settings** so
+previews match before you've connected. Close the printer's own app first: these printers
+take one connection at a time.
 
-- Print a test label in **Settings** and adjust **Darkness**. Sticker paper usually
-  needs more than plain receipt paper.
-- Use **57 mm self-adhesive thermal sticker rolls**. Stick labels on dry bags *before*
-  freezing.
-- The protocol is the community-reverse-engineered `51 78 …` one (MX/GB models).
-  If your unit prints garbage or nothing, note the name it advertises and the Fun Print
-  model so the driver (`src/lib/catprinter.js`) can be adjusted.
+| | **P15** label maker (Marklife / Pristar P15, P12, L13) | **C15** "cat" printer (Fun Print) |
+|---|---|---|
+| Labels | 12–15 mm die-cut labels, 30 / 40 / 50 mm long (set in Settings) | 57 mm thermal sticker roll |
+| Layout | QR across the full 12 mm height, name / amount / dates beside it | QR left, larger text right |
+| Driver | `src/lib/p15printer.js`: service `0xFF00`, ESC/POS raster (`GS v 0`) in a `10 FF …` job | `src/lib/catprinter.js`: the `51 78 …` protocol (MX/GB models) |
+| Darkness | fixed | slider in Settings |
+
+The P15 job format follows what the [LaBLEr](https://github.com/toolicious/labler) project
+verified on a P15 (our bytes match its reference job exactly). If a printer isn't
+recognised, the error lists the Bluetooth services it does offer. Stick labels on dry bags
+*before* freezing.
 
 Labels encode `PNTRY:I:000123`. The wall scanner and phone camera both read them.
 
