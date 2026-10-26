@@ -145,7 +145,9 @@ middle, and a fixed bottom bar: **TAKE OUT | PUT AWAY** and **UNDO**.
   should be used first.
 - **Nothing in stock** (counts drifted): *It was there, fix count* records the one the
   app didn't know about.
-- **UNDO** reverses the last scan, including any −/+ on it.
+- **UNDO** opens a list of this scanner's last 5 scans from the past day, newest on top.
+  Tap the one to reverse (any −/+ on it is reversed too); **CLOSE** or 20 s without a
+  tap closes the list.
 - **Server unreachable:** keep scanning. Scans wait on the scanner and are sent when the
   server is back (kept in RAM, so a power cut loses them).
 - After 5 minutes without a touch or scan it shows a dim clock with what to buy and use
@@ -181,6 +183,7 @@ rest:
 | `GET /api/scan/:event` | The same reply for an earlier scan; the wall polls it while `status` is `lookup` |
 | `POST /api/scan/:event/adjust` `{by: 1\|-1}` | One more or one fewer of that scan ("bought six") |
 | `POST /api/scan/:event/fix` | For a nothing-in-stock OUT: record that there was one |
+| `GET /api/scan/recent?device=wall` | That device's last 5 scans from the past day that can still be undone (the wall's UNDO list) |
 | `POST /api/undo` `{event_id?}` | Undo that event, or the latest one |
 | `GET /api/summary` | `{low_count, low[], expiring_count, expiring[], soon[{name, n, days}], inbox_count}` |
 | `GET /api/labels?ids=1,2` | Label data for reprinting |

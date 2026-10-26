@@ -522,6 +522,31 @@ export function undo(eventId) {
 	return { ...r, status: 'ok', mode: 'undo', detail: 'Undone', prev: r.count + e.delta, last_one: false, event_id: null };
 }
 
+/**
+ * The wall's UNDO list: this device's own scans from the last day that moved
+ * stock and haven't been undone, newest first.
+ */
+export function recentScans(device, limit = 5) {
+	return q(
+		`SELECT e.id, e.delta, e.ts, e.item_id, e.code, p.name, p.needs_review FROM events e
+		 JOIN products p ON p.id = e.product_id
+		 WHERE e.device = ? AND e.undone = 0 AND e.delta != 0 AND e.type IN ('in', 'out')
+		   AND e.ts >= datetime('now', '-1 day')
+		 ORDER BY e.id DESC LIMIT ?`
+	).all(device, limit).map((e) => {
+		const min = Math.floor((Date.now() - Date.parse(e.ts.replace(' ', 'T') + 'Z')) / 60000);
+		return {
+			event_id: e.id,
+			title: e.needs_review ? `New item ${e.code ?? ''}`.trim()
+				: e.item_id != null ? `${e.name} #${itemCode(e.item_id).slice(-6)}` : e.name,
+			unknown: !!e.needs_review,
+			mode: e.delta > 0 ? 'in' : 'out',
+			units: Math.abs(e.delta),
+			ago: min < 1 ? 'just now' : min < 60 ? `${min} min` : `${Math.floor(min / 60)} h`
+		};
+	});
+}
+
 export function history(limit = 100) {
 	return q(
 		`SELECT e.*, p.name, p.image, l.name AS location FROM events e

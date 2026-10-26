@@ -132,6 +132,28 @@ inline void enqueue(const std::string &code, bool in) {
   queue.push_back({code, in});
 }
 
+// ── UNDO list: this scanner's recent scans (GET /api/scan/recent) ──────────
+
+struct Recent {
+  int event_id;
+  std::string title, ago;
+  bool in, unknown;
+  int units;
+};
+inline std::vector<Recent> recent;
+
+inline bool parse_recent(const std::string &body) {
+  JsonDocument doc = esphome::json::parse_json(body);
+  if (!doc.is<JsonArray>()) return false;
+  recent.clear();
+  for (JsonVariant v : doc.as<JsonArray>()) {
+    std::string mode = v["mode"] | "out";
+    recent.push_back(Recent{v["event_id"] | 0, v["title"] | "", v["ago"] | "", mode == "in", v["unknown"] | false,
+                            v["units"] | 1});
+  }
+  return true;
+}
+
 // ── summary for the home tiles and the night screen ─────────────────────────
 
 struct Soon {
