@@ -12,6 +12,13 @@
 const SERVICE = 0xae30;
 const TX = 0xae01;
 const RX = 0xae02;
+// Other services cheap BLE label/receipt printers use. Web Bluetooth only lets
+// us see services we name up front, so these are here to tell the user what
+// their printer *does* offer when it isn't the cat-printer one.
+const OTHER_SERVICES = [0xaf30, 0xff00, 0xffe0, 0xfee7, 0x18f0, 0xabf0, '49535343-fe7d-4ae5-8fa9-9fafd205e455'];
+
+/** A failure with a message meant for the user, not the console. */
+export class PrinterError extends Error {}
 
 export const WIDTH = 384; // dots per line, 48 mm at 203 dpi
 
@@ -67,14 +74,33 @@ let device, tx, paused = false;
 async function connect() {
 	if (tx && device?.gatt.connected) return;
 	if (!device) {
+		if (navigator.bluetooth.getAvailability && !(await navigator.bluetooth.getAvailability())) {
+			throw new PrinterError('Bluetooth is off, or this device has none. Turn it on and try again.');
+		}
 		// acceptAllDevices: these printers advertise under many names (C15, MX10,
 		// GB03…), and not all of them list 0xAE30 in the advertisement.
-		device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [SERVICE] });
+		device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [SERVICE, ...OTHER_SERVICES] });
 		device.addEventListener('gattserverdisconnected', () => (tx = null));
 	}
-	const server = await device.gatt.connect();
-	const svc = await server.getPrimaryService(SERVICE);
-	tx = await svc.getCharacteristic(TX);
+	try {
+		const server = await device.gatt.connect();
+		let svc;
+		try {
+			svc = await server.getPrimaryService(SERVICE);
+		} catch {
+			const found = await server.getPrimaryServices().catch(() => []);
+			const ids = found.map((x) => x.uuid.replace(/^0000(....)-0000-1000-8000-00805f9b34fb$/, '0x$1')).join(', ');
+			throw new PrinterError(
+				`Connected to “${device.name || 'the printer'}”, but it isn't a cat printer this app knows ` +
+					`(no 0xAE30 service${ids ? `; it offers ${ids}` : ''}). Tell Claude these details to add support.`
+			);
+		}
+		tx = await svc.getCharacteristic(TX);
+	} catch (e) {
+		// Forget a printer that didn't work, so the next try opens the list again.
+		forget();
+		throw e;
+	}
 	try {
 		const rx = await svc.getCharacteristic(RX);
 		await rx.startNotifications();
@@ -93,8 +119,30 @@ export function connectedName() {
 }
 
 export function forget() {
-	device?.gatt.disconnect();
+	device?.gatt?.disconnect();
 	device = tx = null;
+}
+
+/**
+ * Turn a Web Bluetooth failure into something to do about it. Chrome uses
+ * NotFoundError for several unrelated things, so the message decides.
+ */
+export function explain(e) {
+	if (e instanceof PrinterError) return e.message;
+	const m = String(e?.message || '');
+	if (e?.name === 'NotFoundError' && /cancel/i.test(m)) {
+		return 'No printer picked. Tap Print, wait for the list, and choose the printer (often its model, e.g. C15). ' +
+			'Not in the list? Switch it on, and close the Fun Print app: the printer takes only one connection.';
+	}
+	if (e?.name === 'NotFoundError' && /adapter|not available|turned off/i.test(m)) {
+		return 'Bluetooth is off, or this device has none. Turn it on and try again.';
+	}
+	if (e?.name === 'NotFoundError') return `Printer not found: ${m}`;
+	if (e?.name === 'SecurityError') return 'Bluetooth printing needs the app over HTTPS, started by tapping Print.';
+	if (e?.name === 'NetworkError') {
+		return 'Couldn’t connect to the printer. Is it still connected to the Fun Print app or another phone? Close that and try again.';
+	}
+	return `Print failed: ${m || e}`;
 }
 
 async function send(bytes) {

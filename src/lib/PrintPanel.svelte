@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { renderLabel } from './label.js';
-	import { print, supported, connectedName } from './catprinter.js';
+	import { print, supported, connectedName, explain } from './catprinter.js';
 
 	/** labels: rows from labelData() */
 	let { labels } = $props();
@@ -26,7 +26,8 @@
 			ok = true;
 			msg = `Printed ${labels.length} label${labels.length === 1 ? '' : 's'} on ${connectedName() ?? 'printer'}`;
 		} catch (e) {
-			msg = e.name === 'NotFoundError' ? 'No printer chosen' : `Print failed: ${e.message}`;
+			msg = explain(e);
+			console.warn('print failed', e);
 		} finally {
 			busy = false;
 		}
