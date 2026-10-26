@@ -7,7 +7,7 @@ Status: **design only, not built.** For discussion. Mockups: the
 ## Decided so far (2026-10-26)
 
 - **Spaces:** **Pantry** (home: shelves and a freezer, where the wall scanner hangs),
-  **Kitchen** (fridge and its own freezer), **Garage**. More later if needed; there's
+  **Kitchen** (a fridge/freezer combo: *Fridge* and *Freezer* as two places), **Garage**. More later if needed; there's
   an "Add a space" anyway.
 - **Pantry and Kitchen are both food:** same *Use soon*, same grocery list, one
   search. They're two spaces only because they're two rooms.
@@ -72,8 +72,9 @@ events             unchanged; moving a box logs one 'move' event
 ```
 
 Migration: create spaces *Pantry* (home) and *Kitchen*. Today's "Pantry" becomes
-*Pantry › Shelves*, "Fridge" becomes *Kitchen › Fridge*, and today's "Freezer" goes
-to whichever freezer it really is (see the questions). Everything else keeps working.
+*Pantry › Shelves*, "Freezer" becomes *Pantry › Freezer*, "Fridge" becomes
+*Kitchen › Fridge*, and *Kitchen › Freezer* is new. (The app isn't in use yet, so
+there's no real data to sort out.) Everything else keeps working.
 
 ## How the existing parts fit
 
@@ -122,9 +123,6 @@ to whichever freezer it really is (see the questions). Everything else keeps wor
 
 ## Still open
 
-1. Today's single "Freezer": is it the **pantry** freezer or the **kitchen** freezer?
-   (Its packages move there when spaces arrive.)
-2. Does the kitchen have a fridge too, or only the freezer?
-3. Box labels: is plain numbering (A·1, A·2… by shelf) fine, or do you want named
+1. Box labels: is plain numbering (A·1, A·2… by shelf) fine, or do you want named
    boxes ("Camping") as well? The mockups show both: number plus a name.
-4. "Lent to…" reminders: after how long by default, two weeks?
+2. "Lent to…" reminders: after how long by default, two weeks?
