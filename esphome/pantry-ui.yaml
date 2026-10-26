@@ -958,15 +958,17 @@ script:
           bool ok = r.status == "ok";
           bool undo = r.mode == "undo";
           bool empty = r.status == "empty";
+          bool box = r.status == "box";   // a garage box label: nothing moves, open it on the phone
           show(id(res_card), true);
-          bg(id(res_card), ok ? (in ? col::CARD_IN : col::CARD) : 0x2A1519);
-          border(id(res_card), ok ? (undo ? col::DIM : col::GREEN) : col::RED);
+          bg(id(res_card), ok || box ? (in ? col::CARD_IN : col::CARD) : 0x2A1519);
+          border(id(res_card), box ? col::BLUE : ok ? (undo ? col::DIM : col::GREEN) : col::RED);
 
-          uint32_t chip = ok ? (undo ? col::MUTED : col::GREEN) : col::RED_TEXT;
+          uint32_t chip = box ? col::BLUE_TEXT : ok ? (undo ? col::MUTED : col::GREEN) : col::RED_TEXT;
           fg(id(chip_icon), chip);
           fg(id(chip_text), chip);
-          text(id(chip_icon), ok ? (undo ? "\U000F054C" : "\U000F0E1E") : "\U000F0026");
-          std::string what = undo ? "UNDONE"
+          text(id(chip_icon), box ? "\U000F04FC" : ok ? (undo ? "\U000F054C" : "\U000F0E1E") : "\U000F0026");
+          std::string what = box ? "BOX · OPEN IT ON YOUR PHONE"
+                           : undo ? "UNDONE"
                            : empty ? (pkg || r.event_id == 0 ? "ALREADY REMOVED" : "NONE IN STOCK")
                            : !ok ? "ERROR"
                            : r.mode == "in" ? (pkg ? "PUT BACK" : "ADDED")
@@ -992,7 +994,7 @@ script:
           text(id(lbl_useby), r.use_by.empty() ? "—" : r.use_by);
           fg(id(lbl_useby), !r.has_use_by ? col::TEXT : r.use_by_days < 0 ? col::RED_TEXT : r.use_by_days <= 7 ? col::AMBER : col::TEXT);
 
-          show(id(res_text), empty || !ok);
+          show(id(res_text), (empty || !ok) && !box);
           text(id(res_text), empty ? (r.event_id == 0 ? r.detail
                                      : "The pantry thinks there were none left, so this one was probably never scanned in.")
                                    : r.detail);

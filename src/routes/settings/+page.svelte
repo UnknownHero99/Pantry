@@ -25,27 +25,53 @@
 </a>
 <h1 class="page">Settings</h1>
 
-<section class="card">
-	<h2>Locations</h2>
-	<div class="sub">The wall scanner sends its location by name.</div>
-	{#each data.locations as l (l.id)}
-		<div style="display: flex; gap: 8px; margin-top: 8px">
-			<form method="POST" action="?/rename" use:enhance={keep} style="display: flex; gap: 8px; flex: 1; min-width: 0">
-				<input type="hidden" name="id" value={l.id} />
-				<input type="text" name="name" value={l.name} aria-label="Location name" style="background: var(--surface-2)" />
-				<button class="ghost" style="flex: none; width: auto">Rename</button>
-			</form>
-			<form method="POST" action="?/delete" use:enhance>
-				<input type="hidden" name="id" value={l.id} />
-				<button class="icon-btn" style="height: 48px; width: 48px" aria-label="Delete {l.name}">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-				</button>
+<section class="card" id="places">
+	<h2>Spaces and places</h2>
+	<div class="sub">Pantry is home: the app opens there and the wall scanner files into its first place. Boxes are added on a shelf's own page.</div>
+	{#each data.tree.filter((l) => l.kind === 'space') as sp (sp.id)}
+		<div class="space-block">
+			<div style="display: flex; align-items: center; gap: 8px">
+				<form method="POST" action="?/rename" use:enhance={keep} style="display: flex; gap: 8px; flex: 1; min-width: 0">
+					<input type="hidden" name="id" value={sp.id} />
+					<input type="text" name="name" value={sp.name} aria-label="Space name" style="font-weight: 700; background: var(--surface-2)" />
+					<button class="icon-btn" style="height: 48px; width: 48px" aria-label="Save name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg></button>
+				</form>
+				<span class="badge-list">{sp.home ? 'HOME · ' : ''}{sp.list === 'garage' ? 'GARAGE LIST' : 'GROCERIES'}</span>
+			</div>
+			{#each data.tree.filter((l) => l.space_id === sp.id && l.kind === 'place') as pl (pl.id)}
+				<div style="display: flex; gap: 8px; margin: 8px 0 0 {Math.min(pl.depth, 3) * 14}px">
+					<form method="POST" action="?/rename" use:enhance={keep} style="display: flex; gap: 8px; flex: 1; min-width: 0">
+						<input type="hidden" name="id" value={pl.id} />
+						<input type="text" name="name" value={pl.name} aria-label="Place name" style="background: var(--surface-2)" />
+						<button class="icon-btn" style="height: 48px; width: 48px" aria-label="Save name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg></button>
+					</form>
+					<a class="icon-btn" href="/place/{pl.id}" aria-label="Open {pl.name}" style="height: 48px; width: 48px; display: grid; place-items: center">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+					</a>
+					<form method="POST" action="?/delete" use:enhance>
+						<input type="hidden" name="id" value={pl.id} />
+						<button class="icon-btn" style="height: 48px; width: 48px" aria-label="Delete {pl.name}">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+						</button>
+					</form>
+				</div>
+			{/each}
+			<form method="POST" action="?/addPlace" use:enhance class="actions" style="margin-top: 8px">
+				<input type="hidden" name="parent_id" value={sp.id} />
+				<input type="text" name="name" placeholder={sp.list === 'garage' ? 'New place, e.g. Shelf A, Workbench' : 'New place, e.g. Top shelf'} aria-label="New place in {sp.name}" style="background: var(--surface-2)" />
+				<button style="flex: 0 0 auto; width: auto">Add</button>
 			</form>
 		</div>
 	{/each}
-	<form method="POST" action="?/add" use:enhance class="actions">
-		<input type="text" name="name" placeholder="New location, e.g. Garage" aria-label="New location" style="background: var(--surface-2)" />
-		<button style="flex: 0 0 auto; width: auto">Add</button>
+	<form method="POST" action="?/addSpace" use:enhance class="space-block">
+		<div style="display: flex; gap: 8px">
+			<input type="text" name="name" placeholder="New space, e.g. Basement" aria-label="New space" style="background: var(--surface-2)" />
+			<select name="list" aria-label="Shopping list" style="flex: 0 0 130px; background: var(--surface-2)">
+				<option value="garage">Garage list</option>
+				<option value="groceries">Groceries</option>
+			</select>
+		</div>
+		<button style="margin-top: 8px">Add space</button>
 	</form>
 	{#if form?.error}<p class="note bad">{form.error}</p>{/if}
 </section>
@@ -77,7 +103,13 @@
 <section class="card">
 	<h2>Home Assistant</h2>
 	<div class="sub">
-		{#if data.ha}Shopping list syncs to your HA to-do list.{:else}Not configured — set HA_URL, HA_TOKEN and HA_TODO_ENTITY to sync the shopping list.{/if}
+		Groceries list: {data.ha ? 'synced' : 'off (HA_TODO_ENTITY)'} · Garage list: {data.haGarage ? 'synced' : 'off (HA_TODO_ENTITY_GARAGE)'} ·
+		Lending reminders: {data.haNotify ? 'on' : 'off (HA_NOTIFY, e.g. notify.mobile_app_phone)'}.
 		REST sensor endpoint: <code>/api/summary</code>
 	</div>
 </section>
+
+<style>
+	.space-block { border-top: 1px solid var(--surface-2); padding-top: 12px; margin-top: 12px; }
+	.badge-list { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--muted); }
+</style>

@@ -1,6 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { parseBoxCode } from '$lib/format.js';
 	import Camera from '$lib/Camera.svelte';
 	import ScanResult from '$lib/ScanResult.svelte';
 
@@ -48,6 +50,9 @@
 	}
 
 	async function onscan(code) {
+		// A box label opens the box instead of counting anything.
+		const boxId = parseBoxCode(code);
+		if (boxId != null) return goto(`/place/${boxId}`);
 		if (mode === 'in') deadline = Date.now() + REVERT_MS; // restart the countdown
 		const body = { code, mode, device: 'phone', location: location || undefined };
 		// A first-time barcode waits on Open Food Facts; say so instead of looking stuck.
@@ -143,7 +148,7 @@
 			<div class="chips" style="margin-top: 0" role="group" aria-label="Put where">
 				<button class="chip pick" class:on={!location} onclick={() => (location = '')}>Usual place</button>
 				{#each data.locations as l (l.id)}
-					<button class="chip pick" class:on={location === l.id} onclick={() => (location = l.id)}>{l.name}</button>
+					<button class="chip pick" class:on={location === l.id} onclick={() => (location = l.id)}>{l.space} {l.name.toLowerCase()}</button>
 				{/each}
 			</div>
 		{/if}
@@ -154,7 +159,7 @@
 			<div><ScanResult r={last} {onadjust} {onundo} {onfix} /></div>
 		{:else}
 			<p class="muted" style="text-align: center; margin: 22px 0">
-				{mode === 'in' ? 'Scan each item as you put it away.' : 'Point the camera at a barcode or a PNTRY label.'}
+				{mode === 'in' ? 'Scan each item as you put it away.' : 'Point the camera at a barcode, a food label or a box label.'}
 			</p>
 		{/if}
 

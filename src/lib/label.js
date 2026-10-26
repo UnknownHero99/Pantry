@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import { WIDTH } from './catprinter.js';
 import { HEAD, FEED_DOTS_PER_MM } from './p15printer.js';
-import { itemCode, amount, fmtDate } from './format.js';
+import { itemCode, boxCode, amount, fmtDate } from './format.js';
 
 const H = 216; // ≈27 mm at 8 dots/mm
 
@@ -32,7 +32,50 @@ function wrap(ctx, text, maxWidth, maxLines) {
  * printer it's for: 'cat' (48 mm receipt paper) or 'p15' (12 mm label, `lengthMm` long).
  */
 export function renderLabel(item, kind = 'cat', lengthMm = 40) {
+	if (item.box) return renderBox(item, kind, lengthMm);
 	return kind === 'p15' ? renderStrip(item, lengthMm) : renderReceipt(item);
+}
+
+/**
+ * Box label: QR (PNTRY:B:…), the box number big, its name and where it lives.
+ * item = { box: true, id, code: 'A·2', name: 'Power tools', path: 'Garage › Shelf A' }
+ */
+function renderBox(item, kind, lengthMm) {
+	const strip = kind === 'p15';
+	const W = strip ? Math.round(lengthMm * FEED_DOTS_PER_MM) : WIDTH;
+	const Hh = strip ? HEAD : 150;
+	const cv = document.createElement('canvas');
+	cv.width = W;
+	cv.height = Hh;
+	const ctx = cv.getContext('2d');
+	ctx.fillStyle = '#fff';
+	ctx.fillRect(0, 0, W, Hh);
+	ctx.fillStyle = '#000';
+	ctx.textBaseline = 'top';
+
+	const modules = QRCode.create(boxCode(item.id), { errorCorrectionLevel: 'M' }).modules.size + 2;
+	const scale = Math.floor((Hh - 4) / modules);
+	const side = modules * scale;
+	const edge = strip ? 8 : 6;
+	drawQr(ctx, boxCode(item.id), edge, Math.floor((Hh - side) / 2), scale);
+
+	const x = edge + side + 8;
+	const w = W - x - edge;
+	let y = strip ? 4 : 10;
+	ctx.font = `bold ${strip ? 34 : 56}px sans-serif`;
+	ctx.fillText(wrap(ctx, item.code || 'BOX', w, 1)[0], x, y);
+	y += strip ? 38 : 62;
+	if (item.name) {
+		ctx.font = `bold ${strip ? 20 : 30}px sans-serif`;
+		ctx.fillText(wrap(ctx, item.name.toUpperCase(), w, 1)[0], x, y);
+		y += strip ? 23 : 36;
+	}
+	if (item.path && y <= Hh - (strip ? 16 : 24)) {
+		ctx.font = `${strip ? 15 : 22}px sans-serif`;
+		ctx.fillText(wrap(ctx, item.path, w, 1)[0], x, y);
+	}
+	harden(ctx, W, Hh);
+	return cv;
 }
 
 /** Threshold anti-aliased drawing to pure black and white, so the preview matches what prints. */

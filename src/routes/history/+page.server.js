@@ -50,14 +50,17 @@ export function load({ url }) {
 		days.at(-1).rows.push({
 			ids: e.ids.join(','),
 			product_id: e.product_id,
-			kind: drift(e) ? 'drift' : e.type === 'pack' ? 'pack' : e.type === 'adjust' ? 'adjust' : e.delta > 0 ? 'in' : 'out',
+			kind: drift(e) ? 'drift' : ['pack', 'adjust', 'move', 'took', 'back'].includes(e.type) ? e.type : e.delta > 0 ? 'in' : 'out',
 			name: e.name == null ? 'Deleted product'
 				: e.needs_review ? `New item · ${e.code ?? ''}`
 				: e.type === 'pack' ? `${e.name}${e.ids.length > 1 ? ` ×${e.ids.length}` : ''} packed`
 				: e.type === 'adjust' ? `${e.name} · count fixed`
+				: e.type === 'move' ? `${e.name} moved`
+				: e.type === 'took' ? `${e.name} taken out to use`
+				: e.type === 'back' ? `${e.name} put back`
 				: e.name,
 			unknown: !!e.needs_review,
-			sub: [drift(e) ? 'Nothing in stock' : e.location, e.device === 'app' ? 'phone' : e.device, `${pad(d.getHours())}:${pad(d.getMinutes())}`]
+			sub: [drift(e) ? 'Nothing in stock' : e.type === 'move' ? `to ${e.location}` : e.location, e.device === 'app' ? 'phone' : e.device, `${pad(d.getHours())}:${pad(d.getMinutes())}`]
 				.filter(Boolean)
 				.join(' · '),
 			delta: e.delta,

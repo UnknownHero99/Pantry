@@ -1,54 +1,157 @@
-import { db, tx } from './db.js';
+import { db, tx, IMG_DIR } from './db.js';
 import { bus } from './bus.js';
 import { lookup, saveImage } from './off.js';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { scheduleHaSync } from './ha.js';
 import { env } from '$env/dynamic/private';
-import { parseItemCode, itemCode, amount, ago, daysUntil, shortDate } from '../format.js';
+import { parseItemCode, parseBoxCode, itemCode, amount, ago, daysUntil, shortDate } from '../format.js';
 
 const q = (sql) => db.prepare(sql);
 
 /** Products whose Open Food Facts lookup is still running in the background. */
 const lookingUp = new Set();
 
-/** Tell open PWAs to refresh and push the shopping list to HA. */
+/** Tell open PWAs to refresh and push both shopping lists to HA. */
 function changed() {
 	bus.emit('change');
-	scheduleHaSync(() => shoppingList().map((p) => p.name));
+	scheduleHaSync(() => {
+		const all = shoppingList(null);
+		return {
+			groceries: all.filter((p) => p.list === 'groceries').map((p) => p.name),
+			garage: all.filter((p) => p.list === 'garage').map((p) => p.name)
+		};
+	});
 }
 
-// ── locations ───────────────────────────────────────────────────────────
+// ── storage tree ────────────────────────────────────────────────────────
+// Locations form a tree: space › place › box … (docs/storage-design.md).
+// Spaces are Pantry (home), Kitchen, Garage; stock always sits in a place or box.
 
+/**
+ * Every location, with its space, depth and path ("Garage › Shelf A › A·2 Power tools").
+ * The tree is small, so it's rebuilt on each call.
+ */
+export function tree() {
+	const rows = q('SELECT * FROM locations ORDER BY sort, name COLLATE NOCASE').all();
+	const byId = new Map(rows.map((r) => [r.id, r]));
+	const title = (n) => (n.kind === 'box' && n.code ? `${n.code} ${n.name}`.trim() : n.name);
+	for (const r of rows) {
+		const chain = [];
+		for (let n = r; n && chain.length < 20; n = byId.get(n.parent_id)) chain.unshift(n);
+		const top = chain[0];
+		r.space_id = top.kind === 'space' ? top.id : null;
+		r.space = top.name;
+		r.list = top.list || 'groceries';
+		r.home = !!top.is_home;
+		r.depth = chain.length - 1;
+		r.title = title(r);
+		r.path = chain.map(title).join(' › ');
+		r.order = chain.map((c) => `${String(c.sort).padStart(5, '0')} ${c.name.toLowerCase()}`).join('/');
+	}
+	// Space by space, then place by place: Pantry › Shelves, Pantry › Freezer, Kitchen › …
+	return rows.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+}
+
+/** Places and boxes (not spaces), optionally only those feeding one shopping list. */
+export function places(list) {
+	return tree().filter((l) => l.kind !== 'space' && (!list || l.list === list));
+}
+
+export function spaces() {
+	return tree().filter((l) => l.kind === 'space');
+}
+
+/** Kept for older callers: every place with its path. */
 export function locations() {
-	return q('SELECT * FROM locations ORDER BY sort, name').all();
+	return places();
 }
 
-/** Accepts an id, a name (as the wall scanner sends it), or nothing. */
+function firstPlace(spaceId) {
+	return q("SELECT id FROM locations WHERE parent_id = ? AND kind = 'place' ORDER BY sort, name LIMIT 1").get(spaceId)?.id ?? null;
+}
+
+/** Where things go when nothing says otherwise: the home space's first place (Pantry › Shelves). */
+export function homePlace() {
+	const home = q('SELECT id FROM locations WHERE is_home = 1').get() ?? q("SELECT id FROM locations WHERE kind = 'space' ORDER BY sort LIMIT 1").get();
+	return firstPlace(home?.id) ?? q("SELECT id FROM locations WHERE kind != 'space' ORDER BY sort LIMIT 1").get()?.id;
+}
+
+/**
+ * Accepts an id, a path ("Kitchen › Freezer"), a space name (the wall scanner
+ * sends "Pantry": that means the space's first place) or a place name
+ * (an ambiguous "Freezer" prefers the home space). Never returns a space.
+ */
 export function resolveLocation(ref, product) {
 	if (ref != null && ref !== '') {
-		const row = /^\d+$/.test(String(ref))
-			? q('SELECT id FROM locations WHERE id = ?').get(Number(ref))
-			: q('SELECT id FROM locations WHERE name = ? COLLATE NOCASE').get(String(ref));
-		if (row) return row.id;
+		const s = String(ref).trim().toLowerCase();
+		const all = tree();
+		const hit = /^\d+$/.test(s)
+			? all.find((l) => l.id === Number(s))
+			: (all.find((l) => l.path.toLowerCase() === s) ??
+				all.find((l) => l.kind === 'space' && l.name.toLowerCase() === s) ??
+				all.filter((l) => l.kind !== 'space' && l.name.toLowerCase() === s).sort((a, b) => b.home - a.home)[0]);
+		if (hit) return hit.kind === 'space' ? (firstPlace(hit.id) ?? homePlace()) : hit.id;
 	}
-	return product?.location_id ?? q('SELECT id FROM locations ORDER BY sort, name LIMIT 1').get().id;
+	return product?.location_id ?? homePlace();
 }
 
-export function addLocation(name) {
-	const sort = q('SELECT COALESCE(MAX(sort), 0) + 1 AS s FROM locations').get().s;
-	q('INSERT INTO locations (name, sort) VALUES (?, ?)').run(name, sort);
+/** "Pantry › Freezer": how a place is named in replies, lists and History. */
+export function placeLabel(id) {
+	return id == null ? '' : (tree().find((l) => l.id === id)?.path ?? '');
+}
+
+/** New space, place or box. Boxes go inside a place; places inside a space or place. */
+export function addLocation({ name, parent_id = null, kind = 'place', list = null, code = null }) {
+	if (kind !== 'space' && !parent_id) throw new Error('Pick where it goes');
+	// Unsorted sits at 999 so it stays last; new places go before it.
+	const sort = q('SELECT COALESCE(MAX(sort), 0) + 1 AS s FROM locations WHERE parent_id IS ? AND sort < 900').get(parent_id).s;
+	const { lastInsertRowid } = q('INSERT INTO locations (name, parent_id, kind, list, code, sort) VALUES (?, ?, ?, ?, ?, ?)')
+		.run(name, parent_id, kind, kind === 'space' ? list || 'garage' : null, code, sort);
+	changed();
+	return Number(lastInsertRowid);
+}
+
+export function renameLocation(id, name, code) {
+	if (code === undefined) q('UPDATE locations SET name = ? WHERE id = ?').run(name, id);
+	else q('UPDATE locations SET name = ?, code = ? WHERE id = ?').run(name, code || null, id);
 	changed();
 }
 
-export function renameLocation(id, name) {
-	q('UPDATE locations SET name = ? WHERE id = ?').run(name, id);
+/** Move a place or box (with everything in it) under another place. */
+export function moveLocation(id, parentId) {
+	const all = tree();
+	const node = all.find((l) => l.id === id);
+	const target = all.find((l) => l.id === parentId);
+	if (!node || !target || node.kind === 'space') throw new Error('Can’t move that there');
+	for (let t = target; t; t = all.find((l) => l.id === t.parent_id)) {
+		if (t.id === id) throw new Error('Can’t move a box into itself');
+	}
+	tx(() => {
+		q('UPDATE locations SET parent_id = ? WHERE id = ?').run(parentId, id);
+		logEvent({ type: 'move', location_id: parentId, code: `box:${id}`, device: 'app' });
+	});
 	changed();
+}
+
+/** Ids of a location and everything inside it. */
+function subtree(id) {
+	const all = q('SELECT id, parent_id FROM locations').all();
+	const out = [id];
+	for (let i = 0; i < out.length; i++) for (const r of all) if (r.parent_id === out[i]) out.push(r.id);
+	return out;
 }
 
 export function deleteLocation(id) {
+	const loc = q('SELECT * FROM locations WHERE id = ?').get(id);
+	if (!loc) return;
+	if (loc.is_home) throw new Error('The home space can’t be deleted');
+	const ids = subtree(id);
+	const marks = ids.map(() => '?').join(',');
 	const used =
-		q('SELECT 1 FROM stock WHERE location_id = ? AND qty > 0').get(id) ||
-		q("SELECT 1 FROM items WHERE location_id = ? AND status = 'in'").get(id);
-	if (used) throw new Error('Location still has stock in it');
+		q(`SELECT 1 FROM stock WHERE location_id IN (${marks}) AND qty > 0`).get(...ids) ||
+		q(`SELECT 1 FROM items WHERE location_id IN (${marks}) AND status = 'in'`).get(...ids);
+	if (used) throw new Error(`${loc.name} still has things in it`);
 	q('DELETE FROM locations WHERE id = ?').run(id);
 	changed();
 }
@@ -72,8 +175,8 @@ export function onHand(productId) {
 
 function createProduct(fields) {
 	const { lastInsertRowid } = q(
-		`INSERT INTO products (name, brand, size, category, location_id, homemade, needs_review, unit, shelf_days)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		`INSERT INTO products (name, brand, size, category, location_id, homemade, needs_review, unit, shelf_days, counted, fits)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	).run(
 		fields.name,
 		fields.brand ?? null,
@@ -83,7 +186,9 @@ function createProduct(fields) {
 		fields.homemade ? 1 : 0,
 		fields.needs_review ? 1 : 0,
 		fields.unit ?? (fields.homemade ? 'g' : 'pcs'),
-		fields.shelf_days ?? null
+		fields.shelf_days ?? null,
+		fields.counted === false ? 0 : 1,
+		fields.fits ?? null
 	);
 	return product(Number(lastInsertRowid));
 }
@@ -97,9 +202,11 @@ export function newProduct(fields) {
 export function updateProduct(id, f) {
 	q(
 		`UPDATE products SET name = ?, brand = ?, size = ?, category = ?, location_id = ?, min_stock = ?,
-		 shelf_days = ?, unit = ?, homemade = ?, needs_review = 0 WHERE id = ?`
+		 shelf_days = ?, unit = ?, homemade = ?, needs_review = 0,
+		 counted = COALESCE(?, counted), fits = COALESCE(?, fits) WHERE id = ?`
 	).run(f.name, f.brand || null, f.size || null, f.category || null, f.location_id || null, f.min_stock || 0,
-		f.shelf_days || null, f.unit || 'pcs', f.homemade ? 1 : 0, id);
+		f.shelf_days || null, f.unit || 'pcs', f.homemade ? 1 : 0,
+		f.counted === undefined ? null : f.counted ? 1 : 0, f.fits === undefined ? null : f.fits, id);
 	changed();
 }
 
@@ -250,6 +357,15 @@ export async function scan({ code, mode, device, location, default_location, asy
 	const itemId = parseItemCode(code);
 	if (itemId != null) return scanItem(itemId, mode, device, location);
 
+	// A box label: nothing moves; the phone opens the box, the wall says so.
+	const boxId = parseBoxCode(code);
+	if (boxId != null) {
+		const b = box(boxId);
+		return b
+			? { status: 'box', mode, title: b.title, detail: b.path, meta: b.path, box_id: b.id, count: 0, prev: 0, image: '', event_id: null }
+			: { status: 'error', mode, title: 'Unknown box label', detail: `No box #${boxId}`, count: 0, image: '' };
+	}
+
 	let p = productByBarcode(code);
 	let isNew = false;
 	if (!p) {
@@ -334,9 +450,7 @@ function packageWhat(it) {
 	return [amount(it.amount, it.unit), `packed ${ago(it.packed_at)}`].filter(Boolean).join(' · ');
 }
 
-function locationName(id) {
-	return id == null ? '' : (q('SELECT name FROM locations WHERE id = ?').get(id)?.name ?? '');
-}
+const locationName = placeLabel;
 
 /**
  * Everything the wall display shows about one scan, rebuilt from its event so
@@ -451,6 +565,117 @@ export function fixDrift(eventId) {
 	return scanReply(e.id);
 }
 
+// ── garage: things, moving, lending ───────────────────────────────────
+
+/**
+ * Add something by hand: the garage's "snap a photo, name it" flow. Counted
+ * things get a quantity (and can have a minimum); located things just a place.
+ */
+export function addThing({ name, locationId, counted = false, qty = 1, category, fits, barcode }) {
+	const p = tx(() => {
+		const created = createProduct({ name, category, fits, location_id: locationId, counted, unit: 'pcs' });
+		if (barcode) q('INSERT OR IGNORE INTO barcodes (code, product_id) VALUES (?, ?)').run(barcode, created.id);
+		const n = counted ? Math.max(1, qty) : 1;
+		addStock(created.id, locationId, n);
+		logEvent({ type: 'in', product_id: created.id, location_id: locationId, delta: n, device: 'app' });
+		return created;
+	});
+	changed();
+	return p;
+}
+
+/** Save a photo taken on the phone (already shrunk to a JPEG there) as the product's image. */
+export async function savePhoto(productId, jpeg) {
+	await writeFile(join(IMG_DIR, `${productId}.jpg`), jpeg);
+	// ?v= so phones don't keep showing an old photo from their cache.
+	q('UPDATE products SET image = ? WHERE id = ?').run(`/img/${productId}.jpg?v=${Date.now()}`, productId);
+	changed();
+}
+
+/**
+ * Move a product from one place to another: its stock and packages there, and
+ * for a located thing its usual place too. `from` null = from everywhere.
+ */
+export function moveProduct(productId, from, to) {
+	const p = product(productId);
+	if (!p || !to) return;
+	tx(() => {
+		const rows = q('SELECT location_id, qty FROM stock WHERE product_id = ? AND qty > 0').all(productId)
+			.filter((r) => from == null || r.location_id === from);
+		for (const r of rows) {
+			if (r.location_id === to) continue;
+			addStock(productId, r.location_id, -r.qty);
+			addStock(productId, to, r.qty);
+		}
+		q(`UPDATE items SET location_id = ? WHERE product_id = ? AND status = 'in' ${from == null ? '' : 'AND location_id = ?'}`)
+			.run(...[to, productId, ...(from == null ? [] : [from])]);
+		if (!p.counted || from == null || p.location_id === from) q('UPDATE products SET location_id = ? WHERE id = ?').run(to, productId);
+		logEvent({ type: 'move', product_id: productId, location_id: to, device: 'app' });
+	});
+	changed();
+}
+
+/** A located thing in use ("took the drill"), or back in its place. */
+export function setInUse(productId, inUse) {
+	q('UPDATE products SET taken_at = ? WHERE id = ?').run(inUse ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null, productId);
+	logEvent({ type: inUse ? 'took' : 'back', product_id: productId, location_id: product(productId)?.location_id, device: 'app' });
+	changed();
+}
+
+export function lend(productId, person, remindDays = 14) {
+	tx(() => {
+		q("UPDATE loans SET returned_at = datetime('now') WHERE product_id = ? AND returned_at IS NULL").run(productId);
+		q('INSERT INTO loans (product_id, person, remind_days) VALUES (?, ?, ?)').run(productId, person, remindDays);
+	});
+	changed();
+}
+
+export function returned(productId) {
+	q("UPDATE loans SET returned_at = datetime('now') WHERE product_id = ? AND returned_at IS NULL").run(productId);
+	changed();
+}
+
+export function activeLoan(productId) {
+	return q('SELECT * FROM loans WHERE product_id = ? AND returned_at IS NULL').get(productId) ?? null;
+}
+
+/** Lent out for longer than its reminder: what Home Assistant nags about. */
+export function overdueLoans() {
+	return q(
+		`SELECT l.*, p.name FROM loans l JOIN products p ON p.id = l.product_id
+		 WHERE l.returned_at IS NULL AND datetime(l.since, '+' || l.remind_days || ' days') <= datetime('now')
+		 ORDER BY l.since`
+	).all();
+}
+
+export function markReminded(loanId) {
+	q("UPDATE loans SET reminded_at = datetime('now') WHERE id = ?").run(loanId);
+}
+
+// ── boxes ───────────────────────────────────────────────────────────────
+
+/** A box with its place in the tree, or null. */
+export function box(id) {
+	const b = tree().find((l) => l.id === id && l.kind === 'box');
+	return b ?? null;
+}
+
+/** What's in a box (or any place): products with how many are there. */
+export function contents(locationId) {
+	return inventory()
+		.filter((p) => p.at[locationId])
+		.map((p) => ({ ...p, here: p.at[locationId] }));
+}
+
+/** Next free box number on a shelf: A·1, A·2… from the shelf's first letter. */
+export function nextBoxCode(placeId) {
+	const place = q('SELECT name FROM locations WHERE id = ?').get(placeId);
+	const letter = (place?.name.match(/\b([A-Z0-9])\b/)?.[1] ?? place?.name[0] ?? 'B').toUpperCase();
+	const used = q("SELECT code FROM locations WHERE parent_id = ? AND kind = 'box'").all(placeId)
+		.map((r) => Number(String(r.code).split('·')[1]) || 0);
+	return `${letter}·${Math.max(0, ...used) + 1}`;
+}
+
 // ── home-made packages ──────────────────────────────────────────────────
 
 /** Create `count` labelled packages at once — they're in stock straight away. */
@@ -548,11 +773,20 @@ export function recentScans(device, limit = 5) {
 }
 
 export function history(limit = 100) {
+	const where = new Map(tree().map((l) => [l.id, l]));
 	return q(
-		`SELECT e.*, p.name, p.image, p.needs_review, l.name AS location FROM events e
-		 LEFT JOIN products p ON p.id = e.product_id LEFT JOIN locations l ON l.id = e.location_id
+		`SELECT e.*, p.name, p.image, p.needs_review FROM events e
+		 LEFT JOIN products p ON p.id = e.product_id
 		 ORDER BY e.id DESC LIMIT ?`
-	).all(limit);
+	).all(limit).map((e) => {
+		const box = /^box:(\d+)$/.exec(e.code || '');
+		return {
+			...e,
+			location: where.get(e.location_id)?.path ?? '',
+			// A moved box has no product: name it after the box.
+			name: box ? `Box ${where.get(Number(box[1]))?.title ?? ''}`.trim() : e.name
+		};
+	});
 }
 
 // ── views ───────────────────────────────────────────────────────────────
@@ -577,22 +811,37 @@ export function inventory() {
 		p.total += c.n;
 		p.at[c.location_id ?? 0] = c.n;
 	}
+	const where = new Map(tree().map((l) => [l.id, l]));
+	const loans = new Map(q('SELECT * FROM loans WHERE returned_at IS NULL').all().map((l) => [l.product_id, l]));
+	for (const p of byProduct.values()) {
+		// Which shopping list: the space of its usual place, else of wherever it is.
+		const home = where.get(p.location_id) ?? where.get(Number(Object.keys(p.at)[0]));
+		p.list = home?.list ?? 'groceries';
+		p.loan = loans.get(p.id) ?? null;
+	}
 	return [...byProduct.values()];
 }
 
-export function shoppingList() {
+/**
+ * Below their minimum, for one list ('groceries' — Pantry and Kitchen — or
+ * 'garage'), or both with `null`.
+ */
+export function shoppingList(list = 'groceries') {
 	return inventory()
-		.filter((p) => p.min_stock > 0 && p.total < p.min_stock)
-		.map((p) => ({ id: p.id, name: p.name, brand: p.brand, size: p.size, image: p.image, total: p.total, min: p.min_stock, need: p.min_stock - p.total }));
+		.filter((p) => p.min_stock > 0 && p.total < p.min_stock && (!list || p.list === list))
+		.map((p) => ({
+			id: p.id, name: p.name, brand: p.brand, size: p.size, image: p.image, list: p.list,
+			total: p.total, min: p.min_stock, need: p.min_stock - p.total
+		}));
 }
 
 export function expiring(withinDays = 30) {
+	const where = new Map(tree().map((l) => [l.id, l.path]));
 	return q(
-		`SELECT i.*, p.name, l.name AS location FROM items i JOIN products p ON p.id = i.product_id
-		 LEFT JOIN locations l ON l.id = i.location_id
+		`SELECT i.*, p.name FROM items i JOIN products p ON p.id = i.product_id
 		 WHERE i.status = 'in' AND i.best_before IS NOT NULL AND i.best_before <= date('now', ?)
 		 ORDER BY i.best_before`
-	).all(`+${withinDays} days`);
+	).all(`+${withinDays} days`).map((i) => ({ ...i, location: where.get(i.location_id) ?? '' }));
 }
 
 export function inbox() {
@@ -628,6 +877,9 @@ export function summary() {
 			.map((g) => `${g.name}${g.n > 1 ? ` ×${g.n}` : ''} (${g.days < 0 ? 'expired' : g.days === 0 ? 'today' : g.days + 'd'})`),
 		// The same, structured, for the wall's USE SOON tile.
 		soon: groups.slice(0, 5),
-		inbox_count: q('SELECT COUNT(*) AS n FROM products WHERE needs_review = 1').get().n
+		inbox_count: q('SELECT COUNT(*) AS n FROM products WHERE needs_review = 1').get().n,
+		garage_low_count: shoppingList('garage').length,
+		lent_out: q('SELECT COUNT(*) AS n FROM loans WHERE returned_at IS NULL').get().n,
+		overdue: overdueLoans().map((l) => `${l.name} (${l.person})`)
 	};
 }

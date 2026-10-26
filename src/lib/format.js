@@ -6,6 +6,18 @@ export function itemCode(id) {
 	return LABEL_PREFIX + String(id).padStart(6, '0');
 }
 
+/** Box labels: PNTRY:B:000012. Scanning one opens the box. */
+export const BOX_PREFIX = 'PNTRY:B:';
+
+export function boxCode(id) {
+	return BOX_PREFIX + String(id).padStart(6, '0');
+}
+
+export function parseBoxCode(code) {
+	const m = /^PNTRY:B:(\d+)$/i.exec(code.trim());
+	return m ? Number(m[1]) : null;
+}
+
 export function parseItemCode(code) {
 	const m = /^PNTRY:I:(\d+)$/i.exec(code.trim());
 	return m ? Number(m[1]) : null;

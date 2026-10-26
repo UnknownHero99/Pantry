@@ -29,9 +29,13 @@
 	<h1 class="page">Shopping</h1>
 	{#if data.items.length}<span class="aside">{got.length} of {data.items.length} in the trolley</span>{/if}
 </div>
+<nav class="seg" aria-label="List" style="margin-top: 12px">
+	<a class:on={data.list === 'groceries'} href="/shopping" data-sveltekit-replacestate style="display: grid; place-items: center; height: 44px; border-radius: 10px; color: inherit">Groceries{data.counts.groceries ? ` · ${data.counts.groceries}` : ''}</a>
+	<a class:on={data.list === 'garage'} href="/shopping?list=garage" data-sveltekit-replacestate style="display: grid; place-items: center; height: 44px; border-radius: 10px; color: inherit">Garage{data.counts.garage ? ` · ${data.counts.garage}` : ''}</a>
+</nav>
 {#if data.ha}
 	<p class="lede" style="display: flex; align-items: center; gap: 6px">
-		<span style="width: 8px; height: 8px; border-radius: 4px; background: var(--good)"></span>Also on your Home Assistant list
+		<span style="width: 8px; height: 8px; border-radius: 4px; background: var(--good)"></span>Also on your Home Assistant {data.list === 'garage' ? 'garage' : 'grocery'} list
 	</p>
 {/if}
 
@@ -69,9 +73,9 @@
 {#if !data.items.length}
 	<section class="panel" style="margin-top: 14px">
 		<b>Nothing to buy</b>
-		<p class="muted" style="margin: 4px 0 0">Set a minimum stock on a product and it shows up here when you're running low.</p>
+		<p class="muted" style="margin: 4px 0 0">Set a minimum on a {data.list === 'garage' ? 'counted garage thing (bulbs, filters, screws)' : 'product'} and it shows up here when you're running low.</p>
 	</section>
-{:else}
+{:else if data.list === 'groceries'}
 	<section class="banner blue" style="margin-top: 18px">
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10" /></svg>
 		<span style="flex: 1">Back home? Scan it all in; items leave the list once they're in stock.</span>

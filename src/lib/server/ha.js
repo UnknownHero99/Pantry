@@ -2,48 +2,75 @@ import { env } from '$env/dynamic/private';
 import { getMeta, setMeta } from './db.js';
 
 /**
- * Mirror the shopping list into a Home Assistant to-do list.
+ * Mirror the shopping lists into Home Assistant to-do lists: groceries (Pantry
+ * and Kitchen) into HA_TODO_ENTITY, garage into HA_TODO_ENTITY_GARAGE.
  *
- * Only items this app added are ever removed, tracked in meta.ha_synced, so
- * things you put on the list by hand in HA are left alone. Ticking an item off
- * in HA is fine too — remove_item on a missing item just errors and is ignored.
+ * Only items this app added are ever removed, tracked in meta, so things you
+ * put on a list by hand in HA are left alone. Ticking an item off in HA is
+ * fine too — remove_item on a missing item just errors and is ignored.
  */
-export function haEnabled() {
-	return Boolean(env.HA_URL && env.HA_TOKEN && env.HA_TODO_ENTITY);
+const LISTS = {
+	groceries: { entity: () => env.HA_TODO_ENTITY, meta: 'ha_synced' },
+	garage: { entity: () => env.HA_TODO_ENTITY_GARAGE, meta: 'ha_synced_garage' }
+};
+
+const connected = () => Boolean(env.HA_URL && env.HA_TOKEN);
+
+/** Groceries sync is set up (what the shopping page and settings report). */
+export function haEnabled(list = 'groceries') {
+	return connected() && Boolean(LISTS[list].entity());
 }
 
-async function call(service, item) {
-	const res = await fetch(`${env.HA_URL.replace(/\/$/, '')}/api/services/todo/${service}`, {
+async function service(domain, name, body) {
+	const res = await fetch(`${env.HA_URL.replace(/\/$/, '')}/api/services/${domain}/${name}`, {
 		method: 'POST',
 		headers: { Authorization: `Bearer ${env.HA_TOKEN}`, 'Content-Type': 'application/json' },
-		body: JSON.stringify({ entity_id: env.HA_TODO_ENTITY, item }),
+		body: JSON.stringify(body),
 		signal: AbortSignal.timeout(5000)
 	});
-	if (!res.ok) throw new Error(`HA ${service} ${res.status}`);
+	if (!res.ok) throw new Error(`HA ${domain}.${name} ${res.status}`);
 }
 
 let timer;
-export function scheduleHaSync(getNames) {
-	if (!haEnabled()) return;
+/** getLists() → { groceries: [names], garage: [names] } */
+export function scheduleHaSync(getLists) {
+	if (!connected()) return;
 	clearTimeout(timer);
-	timer = setTimeout(() => sync(getNames()).catch((e) => console.warn('[pantry] HA sync:', e.message)), 3000);
+	timer = setTimeout(async () => {
+		const lists = getLists();
+		for (const [key, cfg] of Object.entries(LISTS)) {
+			if (!cfg.entity()) continue;
+			await sync(lists[key] ?? [], cfg.entity(), cfg.meta).catch((e) => console.warn(`[pantry] HA ${key} sync:`, e.message));
+		}
+	}, 3000);
 }
 
-async function sync(names) {
+async function sync(names, entity_id, metaKey) {
 	// Saved even on failure, so a half-finished sync doesn't re-add duplicates.
-	const synced = new Set(JSON.parse(getMeta('ha_synced') || '[]'));
+	const synced = new Set(JSON.parse(getMeta(metaKey) || '[]'));
 	try {
 		for (const n of names) {
 			if (synced.has(n)) continue;
-			await call('add_item', n);
+			await service('todo', 'add_item', { entity_id, item: n });
 			synced.add(n);
 		}
 		for (const n of [...synced]) {
 			if (names.includes(n)) continue;
-			await call('remove_item', n).catch(() => {});
+			await service('todo', 'remove_item', { entity_id, item: n }).catch(() => {});
 			synced.delete(n);
 		}
 	} finally {
-		setMeta('ha_synced', JSON.stringify([...synced]));
+		setMeta(metaKey, JSON.stringify([...synced]));
 	}
+}
+
+/** Phone notifications go through HA_NOTIFY, e.g. notify.mobile_app_pixel_8. */
+export function notifyEnabled() {
+	return connected() && /^notify\.\w+$/.test(env.HA_NOTIFY || '');
+}
+
+export async function notify(title, message) {
+	if (!notifyEnabled()) return false;
+	await service('notify', env.HA_NOTIFY.split('.')[1], { title, message });
+	return true;
 }

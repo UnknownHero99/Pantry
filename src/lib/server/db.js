@@ -90,6 +90,81 @@ if (!db.prepare('SELECT 1 FROM locations LIMIT 1').get()) {
 	['Pantry', 'Fridge', 'Freezer'].forEach((n, i) => add.run(n, i));
 }
 
+const hasColumn = (table, col) => !!db.prepare(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = ?`).get(col);
+
+/*
+ * Storage tree (docs/storage-design.md): locations become
+ *   space (Pantry, Kitchen, Garage) › place (Shelves, Freezer, Shelf A) › box (A·2) …
+ * Place names repeat across spaces ("Freezer" in Pantry and in Kitchen), so the
+ * old UNIQUE(name) has to go, and SQLite can only drop that by rebuilding the table.
+ */
+if (!hasColumn('locations', 'parent_id')) {
+	db.exec('PRAGMA foreign_keys = OFF');
+	db.exec(`
+		BEGIN;
+		CREATE TABLE locations_new (
+			id INTEGER PRIMARY KEY,
+			name TEXT NOT NULL,
+			sort INTEGER NOT NULL DEFAULT 0,
+			parent_id INTEGER REFERENCES locations(id) ON DELETE CASCADE,
+			kind TEXT NOT NULL DEFAULT 'place',   -- space | place | box
+			list TEXT,                             -- spaces: which shopping list, 'groceries' | 'garage'
+			is_home INTEGER NOT NULL DEFAULT 0,    -- the one space the app and the wall scanner start in
+			code TEXT                              -- boxes: the number on the label, "A·2"
+		);
+		INSERT INTO locations_new (id, name, sort) SELECT id, name, sort FROM locations;
+		DROP TABLE locations;
+		ALTER TABLE locations_new RENAME TO locations;
+		COMMIT;
+	`);
+	db.exec('PRAGMA foreign_keys = ON');
+}
+
+// First run with the tree: Pantry (home: Shelves, Freezer), Kitchen (Fridge,
+// Freezer), Garage (Unsorted). The old flat Pantry / Fridge / Freezer move in.
+if (!db.prepare("SELECT 1 FROM locations WHERE kind = 'space'").get()) {
+	tx(() => {
+		const space = (name, sort, list, home = 0) =>
+			Number(db.prepare("INSERT INTO locations (name, sort, kind, list, is_home) VALUES (?, ?, 'space', ?, ?)").run(name, sort, list, home).lastInsertRowid);
+		const pantry = space('Pantry', 0, 'groceries', 1);
+		const kitchen = space('Kitchen', 1, 'groceries');
+		const garage = space('Garage', 2, 'garage');
+		const old = (name) => db.prepare("SELECT id FROM locations WHERE kind = 'place' AND parent_id IS NULL AND name = ? COLLATE NOCASE").get(name)?.id;
+		const place = (parent, name, sort, id = null) =>
+			id
+				? db.prepare('UPDATE locations SET parent_id = ?, name = ?, sort = ? WHERE id = ?').run(parent, name, sort, id)
+				: db.prepare('INSERT INTO locations (parent_id, name, sort) VALUES (?, ?, ?)').run(parent, name, sort);
+		place(pantry, 'Shelves', 0, old('Pantry'));
+		place(pantry, 'Freezer', 1, old('Freezer'));
+		place(kitchen, 'Fridge', 0, old('Fridge'));
+		place(kitchen, 'Freezer', 1);
+		place(garage, 'Unsorted', 999);
+		// Anything else you'd added sits in the Pantry until you move it.
+		db.prepare("UPDATE locations SET parent_id = ? WHERE kind = 'place' AND parent_id IS NULL").run(pantry);
+	});
+}
+
+// Garage things: counted like food, or only located ("where's the drill?").
+if (!hasColumn('products', 'counted')) {
+	db.exec(`
+		ALTER TABLE products ADD COLUMN counted INTEGER NOT NULL DEFAULT 1;
+		ALTER TABLE products ADD COLUMN fits TEXT;      -- spare parts: what it fits
+		ALTER TABLE products ADD COLUMN taken_at TEXT;  -- located things: in use since
+	`);
+}
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS loans (
+	id INTEGER PRIMARY KEY,
+	product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+	person TEXT NOT NULL,
+	since TEXT NOT NULL DEFAULT (datetime('now')),
+	remind_days INTEGER NOT NULL DEFAULT 14,
+	reminded_at TEXT,
+	returned_at TEXT
+);
+`);
+
 /** Run fn inside a transaction; node:sqlite has no helper for this. */
 export function tx(fn) {
 	db.exec('BEGIN');

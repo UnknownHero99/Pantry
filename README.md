@@ -36,7 +36,9 @@ Dev: `npm install && npm run dev` (port 5190, data in `./data`).
 | `ORIGIN` | Public HTTPS URL behind your reverse proxy, e.g. `https://pantry.example.com`. SvelteKit form posts check it. |
 | `DATA_DIR` | Defaults to `/data` in the image. |
 | `TZ` | Time zone for History, e.g. `Europe/Ljubljana` (the default in `docker-compose.yml`). |
-| `HA_URL`, `HA_TOKEN`, `HA_TODO_ENTITY` | Optional shopping-list sync, e.g. `http://192.168.10.10:20810`, a long-lived token, `todo.shopping_list`. |
+| `HA_URL`, `HA_TOKEN`, `HA_TODO_ENTITY` | Optional grocery-list sync, e.g. `http://192.168.10.10:20810`, a long-lived token, `todo.shopping_list`. |
+| `HA_TODO_ENTITY_GARAGE` | Optional: the garage shopping list into its own HA to-do list, e.g. `todo.hardware_store`. |
+| `HA_NOTIFY` | Optional: "Lent to…" reminders as phone notifications, e.g. `notify.mobile_app_pixel_8`. |
 
 ### Reverse proxy
 
@@ -49,6 +51,35 @@ The wall scanner talks plain HTTP straight to `http://<nas>:5190`, not through t
 **There is no login.** Keep the app LAN-only or put proxy auth in front of the HTTPS
 side. The wall scanner bypasses the proxy, so proxy auth doesn't affect it.
 
+## Spaces: Pantry, Kitchen, Garage
+
+Storage is a small tree: **spaces** › **places** › **boxes**.
+
+| Space | Places (at first) | Lists |
+|---|---|---|
+| **Pantry**, the home space | Shelves, Freezer | Groceries, *Use soon*. The wall scanner files here. |
+| **Kitchen** | Fridge, Freezer | Groceries, *Use soon* (same lists as Pantry) |
+| **Garage** | Unsorted (+ your shelves) | its own Garage shopping list |
+
+- The **Stock** tab opens on Pantry; tap the title (*Pantry ▾*) to switch space.
+  Search always looks **everywhere** and answers with the path,
+  e.g. *Garage › Shelf A › A·1 Power tools*.
+- Add spaces and places in **Settings → Spaces and places**. A space shops into either
+  Groceries or the Garage list.
+- **Boxes:** on a shelf's page, *+ New numbered boxes* makes A·1, A·2… and prints their
+  labels on the P15 (QR `PNTRY:B:…`). Scanning a box label on the phone opens the box;
+  *Move box* moves everything inside with it.
+- **Sorting the garage:** open a box, *+ Put in*: snap a photo, name it, *Tool / Spare part
+  / Other*, what a spare part **fits**, *Just 1* or *Count them*. *Save, next thing*.
+  Not sure where something goes? Put it in *Unsorted* and move it later.
+- **Counted** things (bulbs, filters, screws) have a quantity and a minimum, like food.
+  **Located** things (a drill) only have a place: *Took it* / *Put back*, *Move…*,
+  and *Lent to…* with a reminder (7 / 14 / 30 days) through Home Assistant.
+- Migrating from before spaces: the old Pantry becomes *Pantry › Shelves*, Freezer
+  *Pantry › Freezer*, Fridge *Kitchen › Fridge*; nothing else changes.
+
+See `docs/storage-design.md` for the reasoning.
+
 ## Using it
 
 The phone app looks and talks like the wall: dark, TAKE OUT / PUT AWAY, the same result
@@ -57,7 +88,7 @@ card. Tabs: Stock · Shop · **Scan** (the big middle button) · Pack · More.
 | Screen | |
 |---|---|
 | **Stock** | Tiles for *to buy*, *use soon*, *to name*; search; filter by place; tap a count for −/+ |
-| **Shop** | Below *min stock*, with photos. Ticks ("in the trolley") stay on your phone; *Put away* opens Scan in put-away mode |
+| **Shop** | Groceries and Garage lists: below *min stock*, with photos. Ticks ("in the trolley") stay on your phone; *Put away* opens Scan in put-away mode |
 | **Scan** | Camera (+ torch, + type a code), TAKE OUT / PUT AWAY (falls back after 2 min, like the wall), result card with −/+, undo, fix count, the trip list |
 | **Pack** | Home-made goods: recent products as chips, packs × amount, where, use-by chips, live label preview → print |
 | **Product** | Count per place, packages, details. An unknown barcode (the wall's QR code lands here) opens as a quick *name it* form |
@@ -212,6 +243,6 @@ rest:
 | `POST /api/scan/:event/fix` | For a nothing-in-stock OUT: record that there was one |
 | `GET /api/scan/recent?device=wall` | That device's last 5 scans from the past day that can still be undone (the wall's UNDO list) |
 | `POST /api/undo` `{event_id?}` | Undo that event, or the latest one |
-| `GET /api/summary` | `{low_count, low[], expiring_count, expiring[], soon[{name, n, days}], inbox_count}` |
+| `GET /api/summary` | `{low_count, low[], expiring_count, expiring[], soon[{name, n, days}], inbox_count, garage_low_count, lent_out, overdue[]}` (`low` is groceries) |
 | `GET /api/labels?ids=1,2` | Label data for reprinting |
 | `GET /api/events` | SSE stream: `change` whenever stock moves |

@@ -9,6 +9,9 @@
 	let picked = $state(new Set());
 	let reprint = $state(null);
 	let merging = $state(false);
+	let moving = $state(false);
+	let lending = $state(false);
+	let lendDays = $state(14);
 	let minStock = $state(0);
 	let place = $state('');
 	$effect.pre(() => {
@@ -24,7 +27,14 @@
 	const meta = $derived(
 		[p.brand?.toLowerCase() === p.name.toLowerCase() ? '' : p.brand, p.size, p.category].filter(Boolean).join(' · ')
 	);
-	const where = $derived(data.locations.filter((l) => qtyAt(l.id) > 0).map((l) => `${qtyAt(l.id)} in ${l.name}`).join(', '));
+	const where = $derived(data.locations.filter((l) => qtyAt(l.id) > 0).map((l) => `${qtyAt(l.id)} in ${l.path}`).join(', '));
+	const food = $derived(data.locations.filter((l) => l.list === 'groceries' && l.kind === 'place'));
+	// Places that matter here: where it is, plus its usual place.
+	const here = $derived(data.locations.filter((l) => qtyAt(l.id) > 0 || l.id === p.location_id));
+	const homePath = $derived(data.locations.find((l) => l.id === p.location_id)?.path);
+	// Back to the space it lives in: Garage things go back to the Garage.
+	const homeSpace = $derived(data.locations.find((l) => l.id === (p.location_id ?? data.stock.find((s) => s.qty > 0)?.location_id)));
+	const since = (ts) => ts.slice(0, 10).split('-').reverse().join('.');
 
 	function togglePick(id) {
 		const n = new Set(picked);
@@ -45,11 +55,19 @@
 {/snippet}
 
 {#snippet places(name = 'location_id')}
+	<!-- Food places as a switch (four of them); anything else picks from the whole tree. -->
 	<div class="seg" role="radiogroup" aria-label="Usually kept in">
-		{#each data.locations as l (l.id)}
-			<label><input type="radio" {name} value={String(l.id)} bind:group={place} />{l.name}</label>
+		{#each food as l (l.id)}
+			<label class="two"><input type="radio" {name} value={String(l.id)} bind:group={place} /><small>{l.space}</small>{l.name}</label>
 		{/each}
 	</div>
+{/snippet}
+
+{#snippet anyPlace(name = 'location_id')}
+	<select {name} bind:value={place} aria-label="Usually kept in">
+		<option value="">—</option>
+		{#each data.locations as l (l.id)}<option value={String(l.id)}>{l.path}</option>{/each}
+	</select>
 {/snippet}
 
 {#snippet minimum()}
@@ -116,9 +134,9 @@
 		<p class="muted" style="font-size: 13px">The barcode becomes a second barcode of that product; this count moves over too.</p>
 	{/if}
 {:else}
-	<a class="back" href="/">
+	<a class="back" href={homeSpace && !homeSpace.home ? `/?space=${homeSpace.space_id}` : '/'}>
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-		Stock
+		{homeSpace?.space ?? 'Stock'}
 	</a>
 
 	{#if form?.saved}
@@ -141,11 +159,70 @@
 			<h1 class="page" style="font-size: 24px">{p.name}</h1>
 			{#if meta}<div class="muted">{meta}</div>{/if}
 		</div>
-		<div style="text-align: right; flex: none">
-			<div style="font-size: 34px; font-weight: 700; line-height: 1; color: {p.min_stock && data.total < p.min_stock ? 'var(--warn)' : 'inherit'}">{data.total}</div>
-			<div class="muted" style="font-size: 12px">{p.min_stock ? `min ${p.min_stock}` : 'in stock'}</div>
-		</div>
+		{#if p.counted}
+			<div style="text-align: right; flex: none">
+				<div style="font-size: 34px; font-weight: 700; line-height: 1; color: {p.min_stock && data.total < p.min_stock ? 'var(--warn)' : 'inherit'}">{data.total}</div>
+				<div class="muted" style="font-size: 12px">{p.min_stock ? `min ${p.min_stock}` : 'in stock'}</div>
+			</div>
+		{/if}
 	</div>
+
+	{#if p.fits}<p class="muted" style="margin: 10px 0 0">Fits <b style="color: var(--ink)">{p.fits}</b></p>{/if}
+
+	{#if !p.counted}
+		<!-- A located thing: where it lives, whether it's out, who has it. -->
+		<section class="panel" style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px">
+			<div class="caps" style="margin: 0"><span>Lives in</span></div>
+			<div style="font-size: 17px; font-weight: 500">{homePath || 'Nowhere yet'}</div>
+			{#if data.loan}
+				<div class="banner warn">
+					<span style="flex: 1"><b>Lent to {data.loan.person}</b>since {since(data.loan.since)} · reminder after {data.loan.remind_days} days</span>
+					<form method="POST" action="?/returned" use:enhance={keep}><button style="width: auto; min-height: 40px; padding: 0 12px; font-size: 14px">Got it back</button></form>
+				</div>
+			{:else if p.taken_at}
+				<div class="banner blue">
+					<span style="flex: 1"><b>In use</b>since {since(p.taken_at)}</span>
+					<form method="POST" action="?/back" use:enhance={keep}><button style="width: auto; min-height: 40px; padding: 0 12px; font-size: 14px">Put back</button></form>
+				</div>
+			{/if}
+			<div class="actions" style="margin-top: 0">
+				{#if !p.taken_at && !data.loan}
+					<form method="POST" action="?/took" use:enhance={keep}><button class="ghost">Took it</button></form>
+				{/if}
+				<button class="ghost" onclick={() => (moving = !moving)}>Move…</button>
+				{#if !data.loan}<button class="ghost" onclick={() => (lending = !lending)}>Lent to…</button>{/if}
+			</div>
+			{#if lending}
+				<form method="POST" action="?/lend" use:enhance={() => async ({ update }) => { await update({ reset: false }); lending = false; }}>
+					<input type="text" name="person" placeholder="Who has it?" aria-label="Lent to" required autocomplete="off" />
+					<div class="lbl">Remind me after</div>
+					<div class="seg" role="radiogroup" aria-label="Remind after">
+						{#each [7, 14, 30] as d}<label><input type="radio" name="days" value={d} bind:group={lendDays} />{d} days</label>{/each}
+					</div>
+					<button style="margin-top: 10px">Lend it</button>
+				</form>
+			{/if}
+		</section>
+	{/if}
+
+	{#if moving || (p.counted && here.length)}
+		{#if moving}
+			<form method="POST" action="?/move" use:enhance={() => async ({ update }) => { await update({ reset: false }); moving = false; }} class="panel" style="margin-top: 12px">
+				<div class="caps" style="margin-top: 0"><span>Move {p.counted ? 'from' : ''}</span></div>
+				{#if p.counted && here.filter((l) => qtyAt(l.id) > 0).length > 1}
+					<select name="from" aria-label="Move from">
+						<option value="">Everywhere</option>
+						{#each here.filter((l) => qtyAt(l.id) > 0) as l (l.id)}<option value={l.id}>{l.path} ({qtyAt(l.id)})</option>{/each}
+					</select>
+				{/if}
+				<select name="to" required aria-label="Move to" style="margin-top: 8px">
+					<option value="">To…</option>
+					{#each data.locations as l (l.id)}<option value={l.id}>{l.path}</option>{/each}
+				</select>
+				<button style="margin-top: 10px">Move</button>
+			</form>
+		{/if}
+	{/if}
 
 	{#if data.items.length}
 		<div class="caps">
@@ -178,12 +255,12 @@
 		{#if reprint}<PrintPanel labels={reprint} />{/if}
 	{/if}
 
-	{#if !p.homemade || data.stock.some((s) => s.qty > 0)}
-		<div class="caps"><span>Where it is</span></div>
+	{#if p.counted && (!p.homemade || data.stock.some((s) => s.qty > 0))}
+		<div class="caps"><span>Where it is</span><button class="linkish" style="font-size: 12px" onclick={() => (moving = !moving)}>Move…</button></div>
 		<div class="rows">
-			{#each data.locations as l (l.id)}
+			{#each here.length ? here : data.locations.slice(0, 1) as l (l.id)}
 				<div class="row" style="min-height: 56px">
-					<div class="info"><div class="nm">{l.name}</div></div>
+					<div class="info"><div class="nm" style="white-space: normal">{l.path}</div></div>
 					<form method="POST" action="?/adjust" use:enhance={keep} class="stepper">
 						<input type="hidden" name="location_id" value={l.id} />
 						<button name="delta" value="-1" aria-label="One less in {l.name}">−</button>
@@ -204,10 +281,12 @@
 				<div><label class="lbl" for="brand">Brand</label><input id="brand" type="text" name="brand" value={p.brand ?? ''} /></div>
 				<div><label class="lbl" for="size">Pack size</label><input id="size" type="text" name="size" value={p.size ?? ''} placeholder="500 g" /></div>
 			</div>
-			<label class="lbl" for="cat">Category</label>
-			<input id="cat" type="text" name="category" value={p.category ?? ''} />
+			<div class="row2">
+				<div><label class="lbl" for="cat">Category</label><input id="cat" type="text" name="category" value={p.category ?? ''} /></div>
+				<div><label class="lbl" for="fits">Fits</label><input id="fits" type="text" name="fits" value={p.fits ?? ''} placeholder="spare parts" /></div>
+			</div>
 			<div class="lbl">Usually kept in</div>
-			{@render places()}
+			{@render anyPlace()}
 			<div style="margin-top: 12px">{@render minimum()}</div>
 			<div class="row2">
 				<div>
@@ -222,6 +301,8 @@
 				</div>
 			</div>
 			<div class="pills">
+				<label class="pill"><input type="checkbox" name="counted" checked={!!p.counted} /> Count it</label>
+				<input type="hidden" name="has_counted" value="1" />
 				<label class="pill"><input type="checkbox" name="homemade" checked={!!p.homemade} /> Home-made (labelled packages)</label>
 			</div>
 			{#if form?.error}<p class="note bad">{form.error}</p>{/if}

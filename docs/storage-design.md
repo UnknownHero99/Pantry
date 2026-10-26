@@ -1,6 +1,8 @@
 # Multiple storages: garage and beyond (proposal)
 
-Status: **design only, not built.** For discussion. Mockups: the
+Status: **built** (2026-10-26) as described below: spaces, boxes and sorting, located things, the
+separate garage list, lending with HA reminders. Defaults taken for the open questions: boxes have a
+number *and* an optional name; reminders after 14 days (7 / 14 / 30 to pick). Mockups: the
 "Storage (proposal)" page of the design canvas
 (https://claude.ai/artifact/CqD2XJfxkmNZyGzz8CLZbG).
 

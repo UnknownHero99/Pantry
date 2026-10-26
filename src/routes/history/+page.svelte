@@ -7,7 +7,10 @@
 		in: 'M12 19V5M6 11l6-6 6 6',
 		pack: 'M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z',
 		adjust: 'M4 12h16M12 4v16',
-		drift: 'M12 3l10 18H2L12 3zM12 10v4M12 17.5h.01'
+		drift: 'M12 3l10 18H2L12 3zM12 10v4M12 17.5h.01',
+		move: 'M5 12h14M13 6l6 6-6 6',
+		took: 'M12 5v14M6 13l6 6 6-6',
+		back: 'M12 19V5M6 11l6-6 6 6'
 	};
 	const filters = [['all', 'All'], ['wall', 'Wall'], ['phones', 'Phones']];
 	const keep = () => async ({ update }) => update({ reset: false });
@@ -42,7 +45,7 @@
 					<div class="nm" style="color: {e.unknown ? 'var(--warn)' : 'inherit'}">{e.name}</div>
 					<div class="sm">{e.sub}{e.undone ? ' · undone' : ''}</div>
 				</a>
-				<span class="d">{e.delta > 0 ? '+' : e.delta < 0 ? '−' : ''}{Math.abs(e.delta)}</span>
+				<span class="d">{['move', 'took', 'back'].includes(e.kind) ? '' : `${e.delta > 0 ? '+' : e.delta < 0 ? '−' : ''}${Math.abs(e.delta)}`}</span>
 				{#if !e.undone && e.delta}
 					<form method="POST" action="?/undo" use:enhance={keep}>
 						<input type="hidden" name="ids" value={e.ids} />

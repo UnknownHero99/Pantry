@@ -1,10 +1,11 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db.js';
-import { locations, newProduct, pack, product } from '$lib/server/inventory.js';
+import { places, newProduct, pack, product } from '$lib/server/inventory.js';
 
 export function load() {
 	return {
-		locations: locations(),
+		// Home-made goods are food: Pantry and Kitchen places only.
+		locations: places('groceries'),
 		// Most recently packed first, with the last amount used: the chips at the
 		// top of the form are usually the right answer.
 		products: db.prepare(

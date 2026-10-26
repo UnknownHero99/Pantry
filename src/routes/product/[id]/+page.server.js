@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db.js';
 import {
 	product, updateProduct, deleteProduct, mergeProduct, barcodesFor, addBarcode, removeBarcode,
-	itemsFor, removeItem, locations, adjust, onHand, relookup
+	itemsFor, removeItem, places, adjust, onHand, relookup, moveProduct, setInUse, lend, returned, activeLoan
 } from '$lib/server/inventory.js';
 
 function ago(ts) {
@@ -21,7 +21,8 @@ export function load({ params }) {
 		barcodes: barcodesFor(p.id),
 		items: itemsFor(p.id),
 		stock: db.prepare('SELECT location_id, qty FROM stock WHERE product_id = ?').all(p.id),
-		locations: locations(),
+		locations: places(),
+		loan: activeLoan(p.id),
 		others: db.prepare('SELECT id, name FROM products WHERE id != ? AND needs_review = 0 ORDER BY name COLLATE NOCASE').all(p.id),
 		total: onHand(p.id),
 		// For naming an unknown barcode: where and when it was first scanned,
@@ -52,6 +53,9 @@ export const actions = {
 			size: f.size?.trim(),
 			category: f.category?.trim(),
 			location_id: Number(f.location_id) || null,
+			// Only the full edit form has these; the quick naming form leaves them as they are.
+			counted: f.has_counted ? f.counted === 'on' : undefined,
+			fits: f.fits === undefined ? undefined : f.fits.trim(),
 			min_stock: parseInt(f.min_stock) || 0,
 			shelf_days: parseInt(f.shelf_days) || null,
 			unit: f.unit,
@@ -68,6 +72,21 @@ export const actions = {
 			return fail(400, { error: e.message });
 		}
 	},
+	move: async ({ request, params }) => {
+		const f = await request.formData();
+		const to = Number(f.get('to'));
+		if (!to) return fail(400, { error: 'Pick where it goes' });
+		moveProduct(id(params), Number(f.get('from')) || null, to);
+	},
+	took: async ({ params }) => setInUse(id(params), true),
+	back: async ({ params }) => setInUse(id(params), false),
+	lend: async ({ request, params }) => {
+		const f = await request.formData();
+		const person = String(f.get('person') || '').trim();
+		if (!person) return fail(400, { error: 'Who has it?' });
+		lend(id(params), person, Number(f.get('days')) || 14);
+	},
+	returned: async ({ params }) => returned(id(params)),
 	lookup: async ({ params }) => {
 		if (!(await relookup(id(params)))) return fail(404, { notFound: true });
 	},

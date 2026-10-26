@@ -16,3 +16,6 @@ services:
       HA_URL: ${HA_URL:-}
       HA_TOKEN: ${HA_TOKEN:-}
       HA_TODO_ENTITY: ${HA_TODO_ENTITY:-}
+      # Optional: the garage list into its own to-do list, and lending reminders.
+      HA_TODO_ENTITY_GARAGE: ${HA_TODO_ENTITY_GARAGE:-}
+      HA_NOTIFY: ${HA_NOTIFY:-}

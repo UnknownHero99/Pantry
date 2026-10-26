@@ -63,7 +63,7 @@
 			packed_at: packedAt,
 			best_before: bestBefore || null,
 			note,
-			location: data.locations.find((l) => String(l.id) === locationId)?.name
+			location: data.locations.find((l) => String(l.id) === locationId)?.path
 		});
 		preview.replaceChildren(cv);
 	});
@@ -131,7 +131,7 @@
 		<div class="lbl">Where</div>
 		<div class="seg" role="radiogroup" aria-label="Where">
 			{#each data.locations as l (l.id)}
-				<label><input type="radio" name="location_id" value={String(l.id)} bind:group={locationId} />{l.name}</label>
+				<label class="two"><input type="radio" name="location_id" value={String(l.id)} bind:group={locationId} /><small>{l.space}</small>{l.name}</label>
 			{/each}
 		</div>
 
