@@ -1,0 +1,16 @@
+services:
+  pantry:
+    build: .
+    container_name: pantry
+    restart: unless-stopped
+    ports:
+      - "5190:5190"
+    volumes:
+      - ./data:/data
+    environment:
+      # Public HTTPS URL the reverse proxy serves this on (form posts check it).
+      ORIGIN: ${ORIGIN:-}
+      # Optional: mirror the shopping list into a Home Assistant to-do list.
+      HA_URL: ${HA_URL:-}
+      HA_TOKEN: ${HA_TOKEN:-}
+      HA_TODO_ENTITY: ${HA_TODO_ENTITY:-}
