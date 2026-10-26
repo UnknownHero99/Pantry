@@ -1,43 +1,35 @@
 <script>
 	import { enhance } from '$app/forms';
-	let { data, form } = $props();
+	let { data } = $props();
+	const code = (c) => (c?.length === 13 ? `${c[0]} ${c.slice(1, 7)} ${c.slice(7)}` : c);
 </script>
 
+<a class="back" href="/more">
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+	More
+</a>
 <h1 class="page">Inbox</h1>
-<p class="muted">Barcodes Open Food Facts didn't know. Name them, or merge into a product you already have (same thing, different pack).</p>
+<p class="lede">Barcodes Open Food Facts didn't know. Name each one once; after that it's recognised.</p>
 
-{#each data.items as p (p.id)}
-	<section class="card">
-		<div class="sub">Barcode {p.codes} · scanned {p.created_at.slice(0, 16)}</div>
-		{#if form?.notFound === p.id}<p class="note warn">Still not on Open Food Facts — name it yourself.</p>{/if}
-		<form method="POST" action="?/name" use:enhance>
-			<input type="hidden" name="id" value={p.id} />
-			<input type="text" name="name" placeholder="Name, e.g. Spaghetti 500 g" required />
-			<input type="text" name="brand" placeholder="Brand (optional)" style="margin-top: 8px" />
-			<button style="margin-top: 8px">Save name</button>
-		</form>
-		{#if data.products.length}
-			<form method="POST" action="?/merge" use:enhance class="actions">
-				<input type="hidden" name="id" value={p.id} />
-				<select name="into" required>
-					<option value="">Same as…</option>
-					{#each data.products as o}<option value={o.id}>{o.name}</option>{/each}
-				</select>
-				<button class="ghost" style="flex: 0 0 auto; width: auto">Merge</button>
-			</form>
-		{/if}
-		<div class="actions">
-			<form method="POST" action="?/lookup" use:enhance>
-				<input type="hidden" name="id" value={p.id} />
-				<button class="ghost">Look up again</button>
-			</form>
-			<a class="btn ghost" href="/product/{p.id}">Full edit</a>
+<div class="rows" style="margin-top: 10px">
+	{#each data.items as p (p.id)}
+		<div class="row">
+			<a class="info" href="/product/{p.id}" style="display: flex; align-items: center; gap: 12px">
+				<span class="thumb" style="background: var(--warn-bg); color: var(--warn)">?</span>
+				<span style="min-width: 0">
+					<div class="nm" style="letter-spacing: 0.5px">{code(p.codes?.split(', ')[0])}</div>
+					<div class="sm">scanned {p.created_at.slice(0, 10).split('-').reverse().join('.')}</div>
+				</span>
+			</a>
+			<a class="btn" href="/product/{p.id}" style="width: auto; min-height: 40px; padding: 0 14px; font-size: 14px">Name it</a>
 			<form method="POST" action="?/delete" use:enhance>
 				<input type="hidden" name="id" value={p.id} />
-				<button class="ghost">Delete</button>
+				<button class="icon-btn" aria-label="Delete {p.codes}">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+				</button>
 			</form>
 		</div>
-	</section>
-{:else}
-	<section class="card"><p class="muted">Inbox is empty 🎉</p></section>
-{/each}
+	{:else}
+		<section class="panel"><b>All named</b><p class="muted" style="margin: 4px 0 0">New barcodes the food database doesn't know will show up here.</p></section>
+	{/each}
+</div>

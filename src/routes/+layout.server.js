@@ -1,5 +1,7 @@
 import { summary } from '$lib/server/inventory.js';
 
+/** Tab badges: things to buy, barcodes to name. */
 export function load() {
-	return { inboxCount: summary().inbox_count };
+	const s = summary();
+	return { inboxCount: s.inbox_count, shopCount: s.low_count };
 }

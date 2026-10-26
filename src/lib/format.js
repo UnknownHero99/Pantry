@@ -20,8 +20,14 @@ export function amount(value, unit) {
 
 /** "today", "5 days", "3 weeks", "4 months" — short enough for the wall screen. */
 export function age(isoDate, now = new Date()) {
-	const days = Math.round((now - new Date(isoDate)) / 86400000);
-	return span(days);
+	// Calendar days, not 24 h periods: packed this morning is "today", not "1 day".
+	return span(-daysUntil(isoDate.slice(0, 10), now));
+}
+
+/** "packed today", "packed 3 months ago". */
+export function ago(isoDate, now = new Date()) {
+	const a = age(isoDate, now);
+	return a === 'today' ? 'today' : `${a} ago`;
 }
 
 export function span(days) {

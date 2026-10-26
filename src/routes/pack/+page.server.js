@@ -5,7 +5,16 @@ import { locations, newProduct, pack, product } from '$lib/server/inventory.js';
 export function load() {
 	return {
 		locations: locations(),
-		products: db.prepare('SELECT id, name, unit, location_id, shelf_days FROM products WHERE homemade = 1 ORDER BY name COLLATE NOCASE').all()
+		// Most recently packed first, with the last amount used: the chips at the
+		// top of the form are usually the right answer.
+		products: db.prepare(
+			`SELECT p.id, p.name, p.unit, p.location_id, p.shelf_days,
+			   (SELECT MAX(i.id) FROM items i WHERE i.product_id = p.id) AS last_item,
+			   (SELECT i.amount FROM items i WHERE i.product_id = p.id ORDER BY i.id DESC LIMIT 1) AS last_amount
+			 FROM products p WHERE p.homemade = 1
+			 ORDER BY last_item IS NULL, last_item DESC, p.name COLLATE NOCASE`
+		).all(),
+		nextId: (db.prepare('SELECT MAX(id) AS n FROM items').get().n ?? 0) + 1
 	};
 }
 

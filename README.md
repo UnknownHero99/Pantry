@@ -35,6 +35,7 @@ Dev: `npm install && npm run dev` (port 5190, data in `./data`).
 |---|---|
 | `ORIGIN` | Public HTTPS URL behind your reverse proxy, e.g. `https://pantry.example.com`. SvelteKit form posts check it. |
 | `DATA_DIR` | Defaults to `/data` in the image. |
+| `TZ` | Time zone for History, e.g. `Europe/Ljubljana` (the default in `docker-compose.yml`). |
 | `HA_URL`, `HA_TOKEN`, `HA_TODO_ENTITY` | Optional shopping-list sync, e.g. `http://192.168.10.10:20810`, a long-lived token, `todo.shopping_list`. |
 
 ### Reverse proxy
@@ -50,14 +51,18 @@ side. The wall scanner bypasses the proxy, so proxy auth doesn't affect it.
 
 ## Using it
 
+The phone app looks and talks like the wall: dark, TAKE OUT / PUT AWAY, the same result
+card. Tabs: Stock · Shop · **Scan** (the big middle button) · Pack · More.
+
 | Screen | |
 |---|---|
-| **Stock** | Everything on hand by location, "use soon" packages, +/- buttons |
-| **Scan** | Phone camera, IN/OUT (IN falls back to OUT after 2 min, same as the wall), undo |
-| **Pack** | Home-made goods: product, number of packages × amount, where, use-by → labels |
-| **Shop** | Products below their *min stock*, with ticks kept on your phone |
-| **More → Inbox** | Barcodes Open Food Facts didn't know: name, retry the lookup, or merge into an existing product |
-| **More → History** | Every movement, undo any of them |
+| **Stock** | Tiles for *to buy*, *use soon*, *to name*; search; filter by place; tap a count for −/+ |
+| **Shop** | Below *min stock*, with photos. Ticks ("in the trolley") stay on your phone; *Put away* opens Scan in put-away mode |
+| **Scan** | Camera (+ torch, + type a code), TAKE OUT / PUT AWAY (falls back after 2 min, like the wall), result card with −/+, undo, fix count, the trip list |
+| **Pack** | Home-made goods: recent products as chips, packs × amount, where, use-by chips, live label preview → print |
+| **Product** | Count per place, packages, details. An unknown barcode (the wall's QR code lands here) opens as a quick *name it* form |
+| **More → Inbox** | Barcodes Open Food Facts didn't know |
+| **More → History** | By day, filter wall / phones / count issues, undo any of them |
 | **More → Settings** | Locations, printer darkness + test print |
 
 Set **Min stock** on a product to have it appear on the shopping list.

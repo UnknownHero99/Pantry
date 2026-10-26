@@ -8,6 +8,8 @@ services:
     volumes:
       - ./data:/data
     environment:
+      # Times in History are shown in this zone.
+      TZ: ${TZ:-Europe/Ljubljana}
       # Public HTTPS URL the reverse proxy serves this on (form posts check it).
       ORIGIN: ${ORIGIN:-}
       # Optional: mirror the shopping list into a Home Assistant to-do list.

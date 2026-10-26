@@ -82,6 +82,9 @@ if (!db.prepare("SELECT 1 FROM pragma_table_info('products') WHERE name = 'size'
 	db.exec('ALTER TABLE products ADD COLUMN size TEXT');
 }
 
+// Categories from Open Food Facts used to keep their language tag ("fr:Nutella").
+db.exec("UPDATE products SET category = substr(category, 4) WHERE category GLOB '[a-z][a-z]:*'");
+
 if (!db.prepare('SELECT 1 FROM locations LIMIT 1').get()) {
 	const add = db.prepare('INSERT INTO locations (name, sort) VALUES (?, ?)');
 	['Pantry', 'Fridge', 'Freezer'].forEach((n, i) => add.run(n, i));

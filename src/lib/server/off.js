@@ -25,7 +25,8 @@ export async function lookup(code) {
 			brand: p.brands?.split(',')[0]?.trim() || null,
 			// Drop the EU estimated-quantity mark: "400 g e" / "400 g ℮".
 			size: p.quantity?.replace(/\s*[e℮]$/, '').trim() || null,
-			category: p.categories?.split(',').at(-1)?.trim() || null,
+			// The last (most specific) category, without a language tag like "fr:".
+			category: p.categories?.split(',').at(-1)?.trim().replace(/^[a-z]{2}:/, '') || null,
 			imageUrl: p.image_front_small_url || p.image_front_url || null
 		};
 	} catch {

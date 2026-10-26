@@ -3,7 +3,7 @@ import { bus } from './bus.js';
 import { lookup, saveImage } from './off.js';
 import { scheduleHaSync } from './ha.js';
 import { env } from '$env/dynamic/private';
-import { parseItemCode, itemCode, amount, age, daysUntil, shortDate } from '../format.js';
+import { parseItemCode, itemCode, amount, ago, daysUntil, shortDate } from '../format.js';
 
 const q = (sql) => db.prepare(sql);
 
@@ -331,7 +331,7 @@ function scanItem(id, mode, device, location) {
 }
 
 function packageWhat(it) {
-	return [amount(it.amount, it.unit), `packed ${age(it.packed_at)} ago`].filter(Boolean).join(' · ');
+	return [amount(it.amount, it.unit), `packed ${ago(it.packed_at)}`].filter(Boolean).join(' · ');
 }
 
 function locationName(id) {
@@ -386,7 +386,7 @@ export function scanReply(eventId, { isNew = false } = {}) {
 		r.detail = mode === 'out' ? what : 'Put back · ' + what;
 		r.pkg = '#' + itemCode(it.id).slice(-6);
 		r.meta = amount(it.amount, it.unit);
-		r.packed = age(it.packed_at) === 'today' ? 'today' : `${age(it.packed_at)} ago`;
+		r.packed = ago(it.packed_at);
 		if (it.best_before) {
 			const d = daysUntil(it.best_before);
 			r.use_by_days = d;
@@ -549,7 +549,7 @@ export function recentScans(device, limit = 5) {
 
 export function history(limit = 100) {
 	return q(
-		`SELECT e.*, p.name, p.image, l.name AS location FROM events e
+		`SELECT e.*, p.name, p.image, p.needs_review, l.name AS location FROM events e
 		 LEFT JOIN products p ON p.id = e.product_id LEFT JOIN locations l ON l.id = e.location_id
 		 ORDER BY e.id DESC LIMIT ?`
 	).all(limit);
@@ -583,7 +583,7 @@ export function inventory() {
 export function shoppingList() {
 	return inventory()
 		.filter((p) => p.min_stock > 0 && p.total < p.min_stock)
-		.map((p) => ({ id: p.id, name: p.name, brand: p.brand, image: p.image, total: p.total, need: p.min_stock - p.total }));
+		.map((p) => ({ id: p.id, name: p.name, brand: p.brand, size: p.size, image: p.image, total: p.total, min: p.min_stock, need: p.min_stock - p.total }));
 }
 
 export function expiring(withinDays = 30) {
