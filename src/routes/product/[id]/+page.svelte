@@ -97,9 +97,9 @@
 			{`NEW BARCODE${data.seen ? ` · SCANNED ${data.seen.device === 'wall' ? 'AT THE WALL' : 'ON A PHONE'} ${data.seen.ago.toUpperCase()}` : ''}`}
 		</div>
 		<div class="t" style="letter-spacing: 1px; color: var(--warn-ink)">{code(data.barcodes[0])}</div>
-		<div class="text">Not in Open Food Facts.{#if where} {where}.{/if}</div>
+		<div class="text">Not in Open Food Facts or its sister databases.{#if where} {where}.{/if}</div>
 	</section>
-	{#if form?.notFound}<p class="note warn">Still not on Open Food Facts. Name it yourself.</p>{/if}
+	{#if form?.notFound}<p class="note warn">Still not in Open Food Facts. Name it yourself.</p>{/if}
 
 	<form method="POST" action="?/save" use:enhance={keep}>
 		{@render hidden()}

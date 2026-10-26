@@ -9,7 +9,7 @@
 	More
 </a>
 <h1 class="page">Inbox</h1>
-<p class="lede">Barcodes Open Food Facts didn't know. Name each one once; after that it's recognised.</p>
+<p class="lede">Barcodes Open Food Facts and its sister databases didn't know. Name each one once; after that it's recognised.</p>
 
 <div class="rows" style="margin-top: 10px">
 	{#each data.items as p (p.id)}

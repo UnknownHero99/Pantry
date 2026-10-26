@@ -5,19 +5,22 @@ import { IMG_DIR } from './db.js';
 const UA = 'Pantry/0.1 (self-hosted home inventory)';
 
 /**
- * Look a barcode up on Open Food Facts. Returns null when it's unknown or the
- * lookup fails — a scan must never block on the internet, so the caller falls
- * back to an "Unknown …" placeholder that lands in the inbox.
+ * Look a barcode up on Open Food Facts and its sister databases: Open Products
+ * Facts (cleaners, toilet paper, batteries), Open Beauty Facts (soap, toothpaste)
+ * and Open Pet Food Facts. They share one barcode index; with product_type=all
+ * Open Food Facts redirects to whichever one has it. Returns null when it's
+ * unknown or the lookup fails — a scan must never block on the internet, so the
+ * caller falls back to an "Unknown …" placeholder that lands in the inbox.
  */
 export async function lookup(code) {
 	try {
 		const res = await fetch(
-			`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,product_name_en,product_name_sl,brands,quantity,categories,image_front_small_url,image_front_url`,
+			`https://world.openfoodfacts.org/api/v3/product/${encodeURIComponent(code)}?product_type=all&fields=product_name,product_name_en,product_name_sl,brands,quantity,categories,image_front_small_url,image_front_url`,
 			{ headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) }
 		);
 		if (!res.ok) return null;
 		const { status, product: p } = await res.json();
-		if (status !== 1 || !p) return null;
+		if (status !== 'success' || !p) return null;
 		const name = p.product_name_sl || p.product_name || p.product_name_en;
 		if (!name) return null;
 		return {
@@ -26,7 +29,9 @@ export async function lookup(code) {
 			// Drop the EU estimated-quantity mark: "400 g e" / "400 g ℮".
 			size: p.quantity?.replace(/\s*[e℮]$/, '').trim() || null,
 			// The last (most specific) category, without a language tag like "fr:".
-			category: p.categories?.split(',').at(-1)?.trim().replace(/^[a-z]{2}:/, '') || null,
+			// Skip the sister sites' own markers ("non-food-products", "open-beauty-facts").
+			category: p.categories?.split(',').map((c) => c.trim().replace(/^[a-z]{2}:/, ''))
+				.filter((c) => c && !/^(non-food-products|open-\w+-facts)$/i.test(c)).at(-1) || null,
 			imageUrl: p.image_front_small_url || p.image_front_url || null
 		};
 	} catch {
