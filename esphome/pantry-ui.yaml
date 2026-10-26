@@ -1,0 +1,1451 @@
+# Pantry wall scanner: the screens and their behaviour.
+# Included as a package by pantry-scanner.yaml (the real board) and
+# pantry-sim.yaml (a desktop window). Those provide the hardware ids used
+# here: main_display, touch, backlight, ha_time, and the substitutions
+# `server` and `location`. Scans come in through script `handle_scan`.
+#
+# Screen layout (v2 design): a status bar on top, a stage in the middle that
+# swaps cards per state, and a fixed bottom bar with TAKE OUT | PUT AWAY and
+# UNDO. pantry_ui.h holds the data and text helpers the lambdas use.
+#
+# http_request blocks the main loop (and so the screen) while it waits, so
+# nothing here waits on the internet: a new barcode is looked up by the
+# server in the background, and this unit polls for the result.
+
+esphome:
+  includes:
+    - pantry_ui.h
+  on_boot:
+    priority: -100
+    then:
+      - script.execute: paint_mode
+      - script.execute: show_idle
+      - script.execute: fetch_summary
+
+http_request:
+  verify_ssl: false
+  # Short: every request freezes the screen until it returns. The server
+  # answers scans straight away and does slow lookups in the background.
+  timeout: 4s
+
+json:
+
+# ── state ───────────────────────────────────────────────────────────────
+# Scan data, the put-away trip and the offline queue live in pantry_ui.h.
+
+globals:
+  - { id: mode_in, type: bool, initial_value: "false" }
+  - { id: pa_left, type: int, initial_value: "0" }        # seconds until put-away falls back to take-out
+  - { id: online, type: bool, initial_value: "true" }
+  - { id: asleep, type: bool, initial_value: "false" }
+  - { id: undo_event, type: int, initial_value: "0" }     # what UNDO and −/+ act on
+  - { id: fix_event, type: int, initial_value: "0" }      # the nothing-in-stock scan "fix count" corrects
+  - { id: undo_open, type: bool, initial_value: "false" } # the UNDO list is showing
+  - { id: last_try, type: std::string, initial_value: '""' }
+  # Set by render_reply. Kept here because ESPHome emits some actions above the
+  # pantry_ui.h include, where pantry:: isn't visible yet.
+  - { id: photo_url, type: std::string, initial_value: '""' }
+
+# ── look ────────────────────────────────────────────────────────────────
+
+# Latin Core covers č š ž ć đ — Open Food Facts names come back in Slovenian.
+font:
+  - { file: "gfonts://Roboto", id: f15, size: 15, bpp: 4, glyphsets: [GF_Latin_Core], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto@700", id: f15b, size: 15, bpp: 4, glyphsets: [GF_Latin_Core], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto@700", id: f17b, size: 17, bpp: 4, glyphsets: [GF_Latin_Core], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto", id: f18, size: 18, bpp: 4, glyphsets: [GF_Latin_Core], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto", id: f20, size: 20, bpp: 4, glyphsets: [GF_Latin_Core], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto@700", id: f22b, size: 22, bpp: 4, glyphsets: [GF_Latin_Core], glyphs: ["−"], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto@700", id: f24b, size: 24, bpp: 4, glyphsets: [GF_Latin_Core], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto@700", id: f30b, size: 30, bpp: 4, glyphsets: [GF_Latin_Core], glyphs: ["−"], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto@700", id: f36b, size: 36, bpp: 4, glyphsets: [GF_Latin_Core], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto@700", id: f44b, size: 44, bpp: 4, glyphsets: [GF_Latin_Core], ignore_missing_glyphs: true }
+  - { file: "gfonts://Roboto@700", id: f72b, size: 72, bpp: 4, glyphs: "0123456789" }
+  - { file: "gfonts://Roboto@300", id: f140, size: 140, bpp: 4, glyphs: "0123456789:" }
+  # Material Design Icons: arrow-down, arrow-up, arrow-right, undo, check-bold,
+  # barcode-scan, help-circle-outline, alert, wifi-off, cart-outline,
+  # clock-outline, tag-outline, close
+  - file: &mdi "https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf"
+    id: i22
+    size: 22
+    bpp: 4
+    glyphs: &icons ["\U000F0045", "\U000F005D", "\U000F0054", "\U000F054C", "\U000F0E1E", "\U000F0072",
+                    "\U000F0625", "\U000F0026", "\U000F05AA", "\U000F0111", "\U000F0150", "\U000F04FC",
+                    "\U000F0156"]
+  - { file: *mdi, id: i28, size: 28, bpp: 4, glyphs: *icons }
+  - { file: *mdi, id: i64, size: 64, bpp: 4, glyphs: *icons }
+
+image:
+  - platform: online_image
+    id: product_img
+    url: ${server}/img/0.jpg   # replaced at runtime per scan
+    format: JPEG                # the app stores every product photo as JPEG
+    type: RGB565
+    resize: 168x168
+    update_interval: never
+    on_download_finished:
+      - lvgl.image.update: { id: img_product, src: product_img }
+      - lvgl.widget.show: img_product
+      - lvgl.widget.hide: media_icon
+    on_error:
+      - lvgl.widget.hide: img_product
+      - lvgl.widget.show: media_icon
+
+lvgl:
+  displays: [main_display]
+  touchscreens: [touch]
+  buffer_size: 25%
+  default_font: f20
+  on_idle:
+    timeout: 5min
+    then:
+      - script.execute: go_to_sleep
+  theme:
+    # Plain containers: no default border, padding, radius or background,
+    # and light text (LVGL's default theme would hand its dark text down).
+    obj:
+      text_color: 0xF1F3F7
+      border_width: 0
+      pad_all: 0
+      radius: 0
+      bg_opa: TRANSP
+    button:
+      shadow_width: 0
+      border_width: 0
+  pages:
+    - id: main_page
+      bg_color: 0x0E1116
+      text_color: 0xF1F3F7
+      scrollable: false
+      widgets:
+        # ── status bar: clock, date, location / offline ──────────────────
+        - obj:
+            id: sb_normal
+            x: 0
+            y: 0
+            width: 800
+            height: 56
+            pad_left: 20
+            pad_right: 20
+            scrollable: false
+            layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
+            widgets:
+              - label: { id: lbl_clock, text: "--:--", text_font: f30b }
+              - label: { id: lbl_date, text: "", text_font: f20, text_color: 0x8C95A5 }
+              - obj: { flex_grow: 1, height: 1 }
+              - obj: { id: status_dot, width: 10, height: 10, radius: 5, bg_opa: COVER, bg_color: 0x2FBF71 }
+              - label: { id: lbl_status, text: "${location}", text_font: f18, text_color: 0x8C95A5 }
+
+        # ── status bar in put-away mode: blue band + drain bar ───────────
+        - obj:
+            id: sb_putaway
+            x: 0
+            y: 0
+            width: 800
+            height: 56
+            pad_left: 20
+            pad_right: 20
+            bg_opa: COVER
+            bg_color: 0x1F6FD1
+            text_color: 0xFFFFFF
+            hidden: true
+            scrollable: false
+            layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 12 }
+            widgets:
+              - label: { text: "\U000F005D", text_font: i28 }
+              - label: { text: "PUTTING AWAY", text_font: f22b, text_letter_space: 1 }
+              - label: { id: lbl_pa_count, text: "", text_font: f20, text_color: 0xD6E6FF }
+              - obj: { flex_grow: 1, height: 1 }
+              - label: { id: lbl_pa_timer, text: "", text_font: f18, text_color: 0xD6E6FF, recolor: true }
+              - bar:
+                  id: bar_pa
+                  floating: true
+                  align: BOTTOM_LEFT
+                  x: -20
+                  width: 800
+                  height: 4
+                  min_value: 0
+                  max_value: 120
+                  value: 120
+                  radius: 0
+                  bg_opa: COVER
+                  bg_color: 0x174F96
+                  anim_duration: 1s
+                  indicator:
+                    radius: 0
+                    bg_color: 0xFFFFFF
+
+        # ── stage: one card (+ banner) on the left, a side panel on the right
+        - obj:
+            id: stage
+            x: 20
+            y: 60
+            width: 760
+            height: 316
+            scrollable: false
+            layout: { type: flex, flex_flow: row, pad_column: 14 }
+            widgets:
+              - obj:
+                  id: card_col
+                  flex_grow: 1
+                  height: 100%
+                  scrollable: false
+                  layout: { type: flex, flex_flow: column, pad_row: 12 }
+                  widgets:
+                    # Home: what to do next
+                    - obj:
+                        id: home_card
+                        width: 100%
+                        flex_grow: 1
+                        bg_opa: COVER
+                        bg_color: 0x171B22
+                        radius: 20
+                        pad_left: 30
+                        pad_right: 30
+                        scrollable: false
+                        layout: { type: flex, flex_flow: column, flex_align_main: center, pad_row: 14 }
+                        widgets:
+                          - label: { id: home_icon, text: "\U000F0072", text_font: i64 }
+                          - label: { id: home_title, text: "Scan to take out", text_font: f44b, width: 100%, long_mode: WRAP }
+                          - label:
+                              id: home_hint
+                              text: "Unpacking shopping? Tap #6FB0FF Put away# first."
+                              recolor: true
+                              width: 100%
+                              long_mode: WRAP
+                              text_color: 0xA3ACBB
+
+                    # Result of a scan: product, home-made package, nothing in stock, error
+                    - obj:
+                        id: res_card
+                        width: 100%
+                        flex_grow: 1
+                        hidden: true
+                        bg_opa: COVER
+                        bg_color: 0x171B22
+                        radius: 20
+                        border_width: 3
+                        border_color: 0x2FBF71
+                        pad_all: 16
+                        pad_left: 20
+                        pad_right: 20
+                        scrollable: false
+                        layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 22 }
+                        widgets:
+                          - obj:
+                              id: res_media
+                              width: 168
+                              height: 168
+                              radius: 16
+                              clip_corner: true
+                              bg_opa: COVER
+                              bg_color: 0x222936
+                              scrollable: false
+                              widgets:
+                                - label: { id: media_icon, align: CENTER, text: "\U000F0072", text_font: i64, text_color: 0x5C6575 }
+                                - image: { id: img_product, src: product_img, align: CENTER, hidden: true }
+                                - label: { id: lbl_pkg_code, align: BOTTOM_MID, y: -10, text: "", text_font: f15b, text_color: 0x8C95A5 }
+                          - obj:
+                              id: res_info
+                              flex_grow: 1
+                              height: 100%
+                              scrollable: false
+                              layout: { type: flex, flex_flow: column, pad_row: 4 }
+                              widgets:
+                                - obj:
+                                    width: SIZE_CONTENT
+                                    height: SIZE_CONTENT
+                                    layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 6 }
+                                    widgets:
+                                      - label: { id: chip_icon, text: "\U000F0E1E", text_font: i22 }
+                                      - label: { id: chip_text, text: "", text_font: f17b, text_letter_space: 1 }
+                                - label: { id: res_name, text: "", text_font: f36b, width: 100%, max_height: 84, long_mode: WRAP, recolor: true }
+                                - label: { id: res_meta, text: "", width: 100%, long_mode: DOT, text_color: 0xA3ACBB }
+                                - obj:
+                                    id: pkg_tiles
+                                    width: 100%
+                                    height: SIZE_CONTENT
+                                    hidden: true
+                                    layout: { type: flex, flex_flow: row, pad_column: 10 }
+                                    widgets:
+                                      - obj:
+                                          flex_grow: 1
+                                          height: SIZE_CONTENT
+                                          bg_opa: COVER
+                                          bg_color: 0x202631
+                                          radius: 12
+                                          pad_all: 8
+                                          pad_left: 14
+                                          layout: { type: flex, flex_flow: column, pad_row: 2 }
+                                          widgets:
+                                            - label: { text: "PACKED", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
+                                            - label: { id: lbl_packed, text: "" }
+                                      - obj:
+                                          flex_grow: 1
+                                          height: SIZE_CONTENT
+                                          bg_opa: COVER
+                                          bg_color: 0x202631
+                                          radius: 12
+                                          pad_all: 8
+                                          pad_left: 14
+                                          layout: { type: flex, flex_flow: column, pad_row: 2 }
+                                          widgets:
+                                            - label: { text: "USE BY", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
+                                            - label: { id: lbl_useby, text: "" }
+                                - label: { id: res_text, text: "", width: 100%, long_mode: WRAP, text_font: f18, text_color: 0xE7B9BF, hidden: true }
+                                - obj: { flex_grow: 1, width: 1 }
+                                - obj:
+                                    id: count_row
+                                    width: 100%
+                                    height: SIZE_CONTENT
+                                    layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 12 }
+                                    widgets:
+                                      - label: { id: lbl_prev, text: "", text_font: f44b, text_color: 0x5C6575 }
+                                      - label: { id: lbl_arrow, text: "\U000F0054", text_font: i28, text_color: 0x5C6575 }
+                                      - label: { id: lbl_count, text: "", text_font: f72b }
+                                      - label: { id: lbl_count_s, text: "", text_font: f44b, hidden: true }
+                                      - label: { id: lbl_left, text: "left", text_color: 0xA3ACBB }
+                                      - obj: { flex_grow: 1, height: 1 }
+                                      - label: { id: lbl_more, text: "Took\nmore?", text_font: f18, text_color: 0xA3ACBB, text_align: RIGHT }
+                                      - button:
+                                          id: btn_minus
+                                          width: 60
+                                          height: 60
+                                          radius: 14
+                                          bg_color: 0x262C37
+                                          widgets:
+                                            - label: { text: "−", align: CENTER, text_font: f30b }
+                                          on_click:
+                                            - script.execute: { id: adjust_last, by: -1 }
+                                      - button:
+                                          id: btn_plus
+                                          width: 60
+                                          height: 60
+                                          radius: 14
+                                          bg_color: 0x39404D
+                                          widgets:
+                                            - label: { text: "+", align: CENTER, text_font: f30b }
+                                          on_click:
+                                            - script.execute: { id: adjust_last, by: 1 }
+                                - obj:
+                                    id: empty_row
+                                    width: 100%
+                                    height: SIZE_CONTENT
+                                    hidden: true
+                                    layout: { type: flex, flex_flow: row, pad_column: 12 }
+                                    widgets:
+                                      - button:
+                                          id: btn_fix
+                                          flex_grow: 1
+                                          height: 64
+                                          radius: 14
+                                          bg_color: 0xF1F3F7
+                                          widgets:
+                                            - label: { text: "It was there, fix count", align: CENTER, text_font: f22b, text_color: 0x0E1116 }
+                                          on_click:
+                                            - script.execute: fix_count
+                                      - button:
+                                          width: 140
+                                          height: 64
+                                          radius: 14
+                                          bg_opa: TRANSP
+                                          border_width: 2
+                                          border_color: 0x5A2A32
+                                          widgets:
+                                            - label: { text: "Ignore", align: CENTER, text_font: f22b, text_color: 0xE7B9BF }
+                                          on_click:
+                                            - script.execute: show_idle
+                          # Drains while the result is up, then the screen goes home.
+                          - bar:
+                              id: bar_return
+                              floating: true
+                              align: BOTTOM_MID
+                              y: 12
+                              width: 100%
+                              height: 4
+                              min_value: 0
+                              max_value: 100
+                              value: 0
+                              radius: 2
+                              bg_opa: TRANSP
+                              anim_duration: 8s
+                              indicator:
+                                radius: 2
+                                bg_color: 0x2FBF71
+                                bg_opa: 60%
+
+                    # A new barcode, while the server asks Open Food Facts
+                    - obj:
+                        id: lookup_card
+                        width: 100%
+                        flex_grow: 1
+                        hidden: true
+                        bg_opa: COVER
+                        bg_color: 0x13233A
+                        radius: 20
+                        border_width: 3
+                        border_color: 0x2B4A73
+                        pad_left: 28
+                        pad_right: 28
+                        scrollable: false
+                        layout: { type: flex, flex_flow: column, flex_align_main: center, pad_row: 12 }
+                        widgets:
+                          - spinner:
+                              width: 64
+                              height: 64
+                              spin_time: 1s
+                              arc_length: 90deg
+                              arc_color: 0x223654
+                              arc_width: 5
+                              indicator:
+                                arc_color: 0x6FB0FF
+                                arc_width: 5
+                          - label: { text: "Looking it up…", text_font: f36b }
+                          - label: { id: lbl_lookup_code, text: "", text_font: f22b, text_letter_space: 2, text_color: 0xCFE0F7 }
+                          - label:
+                              text: "First time we've seen this barcode. Asking Open Food Facts for its name and photo. Keep scanning, it's already counted."
+                              width: 100%
+                              long_mode: WRAP
+                              text_font: f18
+                              text_color: 0xA9B8CC
+
+                    # Not in the food database: QR opens it on the phone to name it
+                    - obj:
+                        id: unknown_card
+                        width: 100%
+                        flex_grow: 1
+                        hidden: true
+                        bg_opa: COVER
+                        bg_color: 0x2A2112
+                        radius: 20
+                        border_width: 3
+                        border_color: 0xF0A43A
+                        pad_all: 20
+                        scrollable: false
+                        layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 20 }
+                        widgets:
+                          - obj:
+                              flex_grow: 1
+                              height: SIZE_CONTENT
+                              layout: { type: flex, flex_flow: column, pad_row: 9 }
+                              widgets:
+                                - obj:
+                                    width: SIZE_CONTENT
+                                    height: SIZE_CONTENT
+                                    text_color: 0xF0A43A
+                                    layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 8 }
+                                    widgets:
+                                      - label: { text: "\U000F0625", text_font: i22 }
+                                      - label: { text: "NEW BARCODE", text_font: f17b, text_letter_space: 1 }
+                                - label: { id: lbl_unk_title, text: "Not in the food database", text_font: f30b, width: 100%, long_mode: WRAP }
+                                - label: { id: lbl_unk_code, text: "", text_font: f22b, text_letter_space: 1, text_color: 0xE3C493 }
+                                - label: { id: lbl_unk_text, text: "", text_font: f18, width: 100%, long_mode: WRAP, text_color: 0xD9C9AE }
+                          - obj:
+                              id: unk_qr
+                              width: SIZE_CONTENT
+                              height: SIZE_CONTENT
+                              layout: { type: flex, flex_flow: column, flex_align_cross: center, pad_row: 8 }
+                              widgets:
+                                - obj:
+                                    width: SIZE_CONTENT
+                                    height: SIZE_CONTENT
+                                    bg_opa: COVER
+                                    bg_color: 0xFFFFFF
+                                    radius: 12
+                                    pad_all: 10
+                                    widgets:
+                                      - qrcode:
+                                          id: qr_code
+                                          size: 140
+                                          dark_color: 0x0E1116
+                                          light_color: 0xFFFFFF
+                                          text: "pantry"
+                                - label: { text: "Name it on your phone", text_font: f15, text_color: 0xD9C9AE }
+
+                    # Server unreachable: scans wait on this unit
+                    - obj:
+                        id: offline_card
+                        width: 100%
+                        flex_grow: 1
+                        hidden: true
+                        bg_opa: COVER
+                        bg_color: 0x2A1519
+                        radius: 20
+                        border_width: 3
+                        border_color: 0xF05A6A
+                        pad_left: 26
+                        pad_right: 26
+                        scrollable: false
+                        layout: { type: flex, flex_flow: column, flex_align_main: center, pad_row: 12 }
+                        widgets:
+                          - label: { text: "\U000F05AA", text_font: i64, text_color: 0xF05A6A }
+                          - label: { text: "Can't reach the pantry", text_font: f36b, width: 100%, long_mode: WRAP }
+                          - label:
+                              text: "Keep scanning. Scans are saved on this scanner and sent automatically when the server is back."
+                              width: 100%
+                              long_mode: WRAP
+                              text_color: 0xE7B9BF
+                          - label: { id: lbl_retry, text: "", text_font: f18, text_color: 0xC98F97 }
+
+                    # UNDO: this scanner's recent scans, tap one to reverse it
+                    - obj:
+                        id: undo_card
+                        width: 100%
+                        flex_grow: 1
+                        hidden: true
+                        bg_opa: COVER
+                        bg_color: 0x171B22
+                        radius: 20
+                        pad_all: 14
+                        pad_left: 16
+                        pad_right: 16
+                        pad_bottom: 10
+                        scrollable: false
+                        layout: { type: flex, flex_flow: column, pad_row: 6 }
+                        widgets:
+                          - obj:
+                              width: 100%
+                              height: 22
+                              pad_left: 6
+                              pad_right: 6
+                              widgets:
+                                - label: { text: "UNDO A SCAN", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
+                                - label: { align: TOP_RIGHT, text: "Tap the one to reverse", text_font: f15, text_color: 0x8C95A5 }
+                          - button:
+                              id: urow0
+                              width: 100%
+                              height: 48
+                              radius: 12
+                              bg_color: 0x1C2129
+                              pad_left: 14
+                              pad_right: 14
+                              hidden: true
+                              layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
+                              widgets:
+                                - label: { id: urow0_icon, text: "\U000F0045", text_font: i22 }
+                                - label: { id: urow0_name, text: "", flex_grow: 1, long_mode: DOT }
+                                - label: { id: urow0_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
+                                - label: { id: urow0_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                              on_click:
+                                - script.execute: { id: undo_pick, i: 0 }
+                          - button:
+                              id: urow1
+                              width: 100%
+                              height: 48
+                              radius: 12
+                              bg_color: 0x1C2129
+                              pad_left: 14
+                              pad_right: 14
+                              hidden: true
+                              layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
+                              widgets:
+                                - label: { id: urow1_icon, text: "\U000F0045", text_font: i22 }
+                                - label: { id: urow1_name, text: "", flex_grow: 1, long_mode: DOT }
+                                - label: { id: urow1_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
+                                - label: { id: urow1_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                              on_click:
+                                - script.execute: { id: undo_pick, i: 1 }
+                          - button:
+                              id: urow2
+                              width: 100%
+                              height: 48
+                              radius: 12
+                              bg_color: 0x1C2129
+                              pad_left: 14
+                              pad_right: 14
+                              hidden: true
+                              layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
+                              widgets:
+                                - label: { id: urow2_icon, text: "\U000F0045", text_font: i22 }
+                                - label: { id: urow2_name, text: "", flex_grow: 1, long_mode: DOT }
+                                - label: { id: urow2_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
+                                - label: { id: urow2_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                              on_click:
+                                - script.execute: { id: undo_pick, i: 2 }
+                          - button:
+                              id: urow3
+                              width: 100%
+                              height: 48
+                              radius: 12
+                              bg_color: 0x1C2129
+                              pad_left: 14
+                              pad_right: 14
+                              hidden: true
+                              layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
+                              widgets:
+                                - label: { id: urow3_icon, text: "\U000F0045", text_font: i22 }
+                                - label: { id: urow3_name, text: "", flex_grow: 1, long_mode: DOT }
+                                - label: { id: urow3_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
+                                - label: { id: urow3_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                              on_click:
+                                - script.execute: { id: undo_pick, i: 3 }
+                          - button:
+                              id: urow4
+                              width: 100%
+                              height: 48
+                              radius: 12
+                              bg_color: 0x1C2129
+                              pad_left: 14
+                              pad_right: 14
+                              hidden: true
+                              layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
+                              widgets:
+                                - label: { id: urow4_icon, text: "\U000F0045", text_font: i22 }
+                                - label: { id: urow4_name, text: "", flex_grow: 1, long_mode: DOT }
+                                - label: { id: urow4_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
+                                - label: { id: urow4_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                              on_click:
+                                - script.execute: { id: undo_pick, i: 4 }
+                          - label: { id: undo_none, hidden: true, text: "Nothing from this scanner in the last day.", text_color: 0xA3ACBB, pad_left: 6, pad_top: 8 }
+
+                    # Under the card: "that was the last one", "an older pack is waiting"
+                    - obj:
+                        id: banner
+                        width: 100%
+                        height: SIZE_CONTENT
+                        hidden: true
+                        bg_opa: COVER
+                        bg_color: 0x3A2A10
+                        radius: 16
+                        pad_all: 12
+                        pad_left: 18
+                        pad_right: 18
+                        # One line, so the card above keeps room for its count.
+                        layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
+                        widgets:
+                          - label: { id: banner_icon, text: "\U000F0111", text_font: i28, text_color: 0xF0A43A }
+                          - label: { id: banner_title, text: "", text_font: f22b, text_color: 0xFFD9A0 }
+                          - label: { id: banner_sub, text: "", text_font: f18, flex_grow: 1, long_mode: DOT, text_color: 0xE3C493 }
+
+              # Home tiles (take-out mode, idle)
+              - obj:
+                  id: side_home
+                  width: 290
+                  height: 100%
+                  scrollable: false
+                  layout: { type: flex, flex_flow: column, pad_row: 10 }
+                  widgets:
+                    - obj:
+                        width: 100%
+                        flex_grow: 1
+                        bg_opa: COVER
+                        bg_color: 0x171B22
+                        radius: 16
+                        pad_all: 14
+                        pad_left: 16
+                        pad_right: 16
+                        scrollable: false
+                        widgets:
+                          - label: { text: "TO BUY", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
+                          - label: { id: lbl_buy_n, align: TOP_RIGHT, text: "", text_font: f15b }
+                          - label: { id: lbl_buy, y: 26, width: 100%, max_height: 76, long_mode: WRAP, text: "", text_line_space: 4 }
+                    - obj:
+                        width: 100%
+                        flex_grow: 1
+                        bg_opa: COVER
+                        bg_color: 0x171B22
+                        radius: 16
+                        pad_all: 14
+                        pad_left: 16
+                        pad_right: 16
+                        scrollable: false
+                        widgets:
+                          - label: { text: "USE SOON", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
+                          - label: { id: lbl_soon_n, align: TOP_RIGHT, text: "", text_font: f15b, text_color: 0xF0A43A }
+                          - label: { id: lbl_soon, y: 26, width: 100%, max_height: 76, long_mode: CLIP, text: "", recolor: true, text_line_space: 4 }
+                    - obj:
+                        id: tile_inbox
+                        width: 100%
+                        height: 54
+                        bg_opa: COVER
+                        bg_color: 0x171B22
+                        radius: 16
+                        pad_left: 16
+                        layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 12 }
+                        widgets:
+                          - obj:
+                              width: 30
+                              height: 30
+                              radius: 15
+                              bg_opa: COVER
+                              bg_color: 0xF0A43A
+                              widgets:
+                                - label: { id: lbl_inbox_n, align: CENTER, text: "", text_font: f17b, text_color: 0x0E1116 }
+                          - label: { id: lbl_inbox, text: "new items to name", text_font: f18, text_color: 0xC9D0DB }
+
+              # Side list: THIS TRIP in put-away mode, WAITING TO SEND when offline
+              - obj:
+                  id: side_list
+                  width: 240
+                  height: 100%
+                  hidden: true
+                  bg_opa: COVER
+                  bg_color: 0x101D30
+                  radius: 18
+                  pad_all: 14
+                  pad_left: 16
+                  pad_right: 16
+                  scrollable: false
+                  widgets:
+                    - label: { id: list_title, text: "THIS TRIP", text_font: f15b, text_letter_space: 1, text_color: 0x7F93AF }
+                    - label: { id: list_n, align: TOP_RIGHT, text: "", text_font: f15b }
+                    - obj: { id: row0, y: 26, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
+                    - obj: { id: row1, y: 62, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
+                    - obj: { id: row2, y: 98, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
+                    - obj: { id: row3, y: 134, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
+                    - obj: { id: row4, y: 170, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
+                    - label: { id: row0_name, y: 33, width: 150, long_mode: DOT, text: "", text_font: f18 }
+                    - label: { id: row1_name, y: 69, width: 150, long_mode: DOT, text: "", text_font: f18 }
+                    - label: { id: row2_name, y: 105, width: 150, long_mode: DOT, text: "", text_font: f18 }
+                    - label: { id: row3_name, y: 141, width: 150, long_mode: DOT, text: "", text_font: f18 }
+                    - label: { id: row4_name, y: 177, width: 150, long_mode: DOT, text: "", text_font: f18 }
+                    - label: { id: row0_n, y: 33, align: TOP_RIGHT, text: "", text_font: f18 }
+                    - label: { id: row1_n, y: 69, align: TOP_RIGHT, text: "", text_font: f18 }
+                    - label: { id: row2_n, y: 105, align: TOP_RIGHT, text: "", text_font: f18 }
+                    - label: { id: row3_n, y: 141, align: TOP_RIGHT, text: "", text_font: f18 }
+                    - label: { id: row4_n, y: 177, align: TOP_RIGHT, text: "", text_font: f18 }
+                    - label: { id: list_foot, align: BOTTOM_LEFT, width: 100%, long_mode: WRAP, text: "", text_font: f15, recolor: true, text_color: 0x7F93AF }
+
+        # ── bottom bar: mode switch + undo ───────────────────────────────
+        - obj:
+            id: seg
+            x: 20
+            y: 390
+            width: 568
+            height: 72
+            radius: 20
+            border_width: 2
+            border_color: 0x2E3A4D
+            bg_opa: COVER
+            bg_color: 0x131821
+            pad_all: 6
+            scrollable: false
+            layout: { type: flex, flex_flow: row, pad_column: 6 }
+            widgets:
+              - button:
+                  id: btn_takeout
+                  flex_grow: 1
+                  height: 100%
+                  radius: 14
+                  layout: { type: flex, flex_flow: row, flex_align_main: center, flex_align_cross: center, flex_align_track: center, pad_column: 12 }
+                  widgets:
+                    - label: { text: "\U000F0045", text_font: i28 }
+                    - label: { text: "TAKE OUT", text_font: f24b }
+                  on_click:
+                    - script.execute: { id: set_mode, go_in: false }
+              - button:
+                  id: btn_putaway
+                  flex_grow: 1
+                  height: 100%
+                  radius: 14
+                  layout: { type: flex, flex_flow: row, flex_align_main: center, flex_align_cross: center, flex_align_track: center, pad_column: 12 }
+                  widgets:
+                    - label: { text: "\U000F005D", text_font: i28 }
+                    - label: { text: "PUT AWAY", text_font: f24b }
+                  on_click:
+                    - script.execute: { id: set_mode, go_in: true }
+        - button:
+            id: btn_undo
+            x: 600
+            y: 390
+            width: 180
+            height: 72
+            radius: 20
+            border_width: 2
+            layout: { type: flex, flex_flow: row, flex_align_main: center, flex_align_cross: center, flex_align_track: center, pad_column: 10 }
+            widgets:
+              - label: { id: undo_icon, text: "\U000F054C", text_font: i28 }
+              - label: { id: undo_label, text: "UNDO", text_font: f22b }
+            on_click:
+              - if:
+                  condition:
+                    lambda: "return id(undo_open);"
+                  then:
+                    - script.execute: show_idle
+                  else:
+                    - script.execute: open_undo
+
+    # Dimmed ambient screen after 5 min without a touch or scan
+    - id: night_page
+      bg_color: 0x000000
+      scrollable: false
+      widgets:
+        - label: { id: lbl_night_clock, align: CENTER, y: -70, text: "--:--", text_font: f140, text_color: 0xC4CAD4 }
+        - label: { id: lbl_night_date, align: CENTER, y: 22, text: "", text_color: 0x8790A0 }
+        - label: { id: lbl_night_stats, align: CENTER, y: 92, text: "", recolor: true, text_color: 0x9AA3B2 }
+        - label: { align: CENTER, y: 150, text: "Scan or touch to wake", text_font: f18, text_color: 0x7A8292 }
+
+# ── behaviour ───────────────────────────────────────────────────────────
+
+script:
+  # PUT AWAY stays on while you unload a bag; after 2 min without a scan it
+  # falls back to TAKE OUT, because taking one thing out is the everyday case.
+  - id: set_mode
+    parameters: { go_in: bool }
+    then:
+      - lambda: |-
+          id(mode_in) = go_in;
+          id(pa_left) = go_in ? 120 : 0;
+          pantry::trip.clear();
+          id(undo_event) = 0;
+      - script.execute: paint_mode
+      - script.execute: show_idle
+
+  # Everything that changes colour with the mode.
+  - id: paint_mode
+    then:
+      - lambda: |-
+          using namespace pantry;
+          bool in = id(mode_in);
+          show(id(sb_normal), !in);
+          show(id(sb_putaway), in);
+          bg(id(main_page)->obj, in ? col::BG_IN : col::BG);
+          bg(id(seg), in ? 0x0F1B2D : 0x131821);
+          border(id(seg), in ? 0x23354F : 0x2E3A4D);
+          bg(id(btn_takeout), in ? 0x0F1B2D : col::TEXT);
+          fg(id(btn_takeout), in ? 0xC9D0DB : col::BG);
+          bg(id(btn_putaway), in ? col::BLUE : 0x131821);
+          fg(id(btn_putaway), in ? 0xFFFFFF : col::BLUE_TEXT);
+          bg(id(side_list), in ? col::SIDE_IN : 0x1E1013);
+          lv_bar_set_value(id(bar_pa), 120, LV_ANIM_OFF);
+      - script.execute: paint_undo
+
+  - id: paint_undo
+    then:
+      - lambda: |-
+          using namespace pantry;
+          bool in = id(mode_in), on = id(online), open = id(undo_open);
+          text(id(undo_icon), open ? "\U000F0156" : "\U000F054C");
+          text(id(undo_label), open ? "CLOSE" : "UNDO");
+          if (open) {
+            bg(id(btn_undo), col::TEXT);
+            border(id(btn_undo), col::TEXT);
+            fg(id(btn_undo), col::BG);
+            return;
+          }
+          bg(id(btn_undo), on ? (in ? 0x0F1B2D : 0x131821) : (in ? col::BG_IN : col::BG));
+          border(id(btn_undo), on ? (in ? 0x23354F : 0x2E3A4D) : (in ? 0x182740 : 0x232A36));
+          fg(id(btn_undo), on ? 0xC9D0DB : (in ? 0x3E5272 : 0x4A5260));
+
+  # Home stage: "Scan to take out" + tiles, or "Scan as you put away" + trip.
+  - id: show_idle
+    then:
+      - script.stop: return_home
+      - lambda: |-
+          using namespace pantry;
+          bool in = id(mode_in);
+          for (auto o : {id(res_card), id(lookup_card), id(unknown_card), id(offline_card), id(undo_card), id(banner)}) show(o, false);
+          id(undo_open) = false;
+          show(id(home_card), true);
+          bg(id(home_card), in ? col::CARD_IN : col::CARD);
+          text(id(home_icon), in ? "\U000F005D" : "\U000F0072");
+          fg(id(home_icon), in ? col::BLUE_TEXT : col::TEXT);
+          text(id(home_title), in ? "Scan each item as you put it away" : "Scan to take out");
+          text(id(home_hint), in ? "Bought several of the same? Scan one, then tap #6FB0FF +#."
+                                 : "Unpacking shopping? Tap #6FB0FF Put away# first.");
+          if (!in) id(undo_event) = 0;
+          id(fix_event) = 0;
+      - script.execute: paint_undo
+      - script.execute: paint_side
+
+  # Right-hand panel: tiles when idle in take-out, the trip in put-away,
+  # the waiting scans when offline; hidden for take-out results.
+  - id: paint_side
+    then:
+      - lambda: |-
+          using namespace pantry;
+          bool in = id(mode_in), off = !id(online) || !queue.empty();
+          bool idle = !lv_obj_has_flag(id(home_card), LV_OBJ_FLAG_HIDDEN);
+          bool list = off || in;
+          show(id(side_home), !list && idle);
+          show(id(side_list), list);
+          if (!list) return;
+
+          lv_obj_t *names[] = {id(row0_name), id(row1_name), id(row2_name), id(row3_name), id(row4_name)};
+          lv_obj_t *nums[] = {id(row0_n), id(row1_n), id(row2_n), id(row3_n), id(row4_n)};
+          lv_obj_t *rows[] = {id(row0), id(row1), id(row2), id(row3), id(row4)};
+          std::string foot;
+          if (off) {
+            bg(id(side_list), 0x1E1013);
+            text(id(list_title), "WAITING TO SEND");
+            fg(id(list_title), 0xC98F97);
+            text(id(list_n), std::to_string(queue.size()));
+            size_t n = queue.size();
+            for (int i = 0; i < 5; i++) {
+              bool has = i < (int) n;
+              show(rows[i], has); show(names[i], has); show(nums[i], has);
+              if (!has) continue;
+              auto &q = queue[n - 1 - i];   // newest first
+              text(names[i], short_code(q.code));
+              fg(names[i], col::TEXT);
+              text(nums[i], q.in ? "in" : "out");
+              fg(nums[i], q.in ? col::BLUE_TEXT : col::RED_TEXT);
+              border(rows[i], 0x3A2026);
+            }
+            if (n > 5) foot = "+ " + std::to_string(n - 5) + " more";
+          } else {
+            bg(id(side_list), col::SIDE_IN);
+            text(id(list_title), "THIS TRIP");
+            fg(id(list_title), 0x7F93AF);
+            text(id(list_n), "");
+            size_t n = trip.size();
+            for (int i = 0; i < 5; i++) {
+              bool has = i < (int) n;
+              show(rows[i], has); show(names[i], has); show(nums[i], has);
+              if (!has) continue;
+              auto &t = trip[i];
+              uint32_t c = t.status == "unknown" ? col::AMBER : t.status == "lookup" ? 0x7F93AF : col::GREEN;
+              text(names[i], t.name);
+              fg(names[i], t.status == "ok" ? col::TEXT : c);
+              text(nums[i], "+" + std::to_string(t.units));
+              fg(nums[i], c);
+              border(rows[i], 0x1C2D45);
+            }
+            if (n == 0) foot = "Nothing yet.";
+            if (n > 5) foot = "+ " + std::to_string(n - 5) + " more";
+            else if (!summary.low.empty())
+              foot += std::string(foot.empty() ? "" : "\n") + "Still on the list:\n#CFE0F7 " + join(summary.low, ", ", 4) + "#";
+          }
+          text(id(list_foot), foot);
+
+  # Draw pantry::last on the stage.
+  - id: render_reply
+    then:
+      - lambda: |-
+          using namespace pantry;
+          auto &r = last;
+          bool in = id(mode_in);
+          for (auto o : {id(home_card), id(res_card), id(lookup_card), id(unknown_card), id(offline_card), id(undo_card), id(banner)})
+            show(o, false);
+          id(undo_open) = false;
+
+          trip_put(r);
+          if (r.mode == "undo") {
+            trip_drop(id(undo_event));
+            id(undo_event) = 0;
+          } else if (r.status == "empty") {
+            id(undo_event) = 0;   // nothing moved, so nothing to undo
+          } else if (r.event_id > 0) {
+            id(undo_event) = r.event_id;
+          }
+          id(fix_event) = r.status == "empty" ? r.event_id : 0;
+
+          if (r.status == "lookup") {
+            show(id(lookup_card), true);
+            text(id(lbl_lookup_code), pretty_code(r.code));
+            return;
+          }
+
+          if (r.status == "unknown") {
+            show(id(unknown_card), true);
+            text(id(lbl_unk_title), r.mode == "out" ? "Not in the pantry yet" : "Not in the food database");
+            text(id(lbl_unk_code), pretty_code(r.code));
+            text(id(lbl_unk_text), r.mode == "in"
+                ? "Counted as 1 in " + r.location + ". Point your phone at the code to name it now, or later from the inbox."
+                : "Point your phone at the code to name it now, or later from the inbox.");
+            show(id(unk_qr), !r.qr.empty());
+            if (!r.qr.empty()) lv_qrcode_update(id(qr_code), r.qr.c_str(), r.qr.size());
+            return;
+          }
+
+          // Product / package / nothing in stock / error card
+          bool pkg = !r.pkg.empty();
+          bool ok = r.status == "ok";
+          bool undo = r.mode == "undo";
+          bool empty = r.status == "empty";
+          show(id(res_card), true);
+          bg(id(res_card), ok ? (in ? col::CARD_IN : col::CARD) : 0x2A1519);
+          border(id(res_card), ok ? (undo ? col::DIM : col::GREEN) : col::RED);
+
+          uint32_t chip = ok ? (undo ? col::MUTED : col::GREEN) : col::RED_TEXT;
+          fg(id(chip_icon), chip);
+          fg(id(chip_text), chip);
+          text(id(chip_icon), ok ? (undo ? "\U000F054C" : "\U000F0E1E") : "\U000F0026");
+          std::string what = undo ? "UNDONE"
+                           : empty ? (pkg || r.event_id == 0 ? "ALREADY REMOVED" : "NONE IN STOCK")
+                           : !ok ? "ERROR"
+                           : r.mode == "in" ? (pkg ? "PUT BACK" : "ADDED")
+                           : "TAKEN OUT";
+          if (ok && !undo && pkg) what += " · HOME-MADE";
+          text(id(chip_text), what);
+
+          // Packages: the amount sits next to the name, to leave room for the dates.
+          text(id(res_name), pkg && !r.meta.empty() ? r.title + " #A3ACBB " + r.meta + "#" : r.title);
+          text(id(res_meta), r.meta);
+          show(id(res_meta), !pkg && !r.meta.empty());
+
+          // Photo, or a tag for home-made packages; the photo shows once downloaded.
+          id(photo_url) = pkg || r.image.empty() ? std::string() : "${server}" + r.image;
+          show(id(img_product), false);
+          show(id(media_icon), true);
+          text(id(media_icon), pkg ? "\U000F04FC" : "\U000F0072");
+          text(id(lbl_pkg_code), r.pkg);
+          show(id(lbl_pkg_code), pkg);
+
+          show(id(pkg_tiles), pkg && ok && !undo);
+          text(id(lbl_packed), r.packed);
+          text(id(lbl_useby), r.use_by.empty() ? "—" : r.use_by);
+          fg(id(lbl_useby), !r.has_use_by ? col::TEXT : r.use_by_days < 0 ? col::RED_TEXT : r.use_by_days <= 7 ? col::AMBER : col::TEXT);
+
+          show(id(res_text), empty || !ok);
+          text(id(res_text), empty ? (r.event_id == 0 ? r.detail
+                                     : "The pantry thinks there were none left, so this one was probably never scanned in.")
+                                   : r.detail);
+
+          bool counts = ok;
+          show(id(count_row), counts);
+          show(id(lbl_prev), !pkg);
+          show(id(lbl_arrow), !pkg);
+          text(id(lbl_prev), std::to_string(r.prev));
+          text(id(lbl_count), std::to_string(r.count));
+          text(id(lbl_count_s), std::to_string(r.count));
+          show(id(lbl_count), !pkg);
+          show(id(lbl_count_s), pkg);
+          fg(id(lbl_count), r.count == 0 && r.mode != "in" ? col::AMBER : col::TEXT);
+          text(id(lbl_left), pkg ? r.left_text : "left");
+          show(id(lbl_left), pkg || r.mode == "out");
+          bool stepper = ok && !undo && !pkg && r.event_id > 0;
+          show(id(lbl_more), stepper);
+          show(id(btn_minus), stepper);
+          show(id(btn_plus), stepper);
+          text(id(lbl_more), r.mode == "in" ? "Bought\nmore?" : "Took\nmore?");
+          bg(id(btn_minus), in ? 0x223654 : 0x262C37);
+          bg(id(btn_plus), in ? col::BLUE : 0x39404D);
+
+          show(id(empty_row), empty && r.event_id > 0);
+          show(id(bar_return), !in && ok);
+
+          // Banner under the card
+          if (ok && !undo && r.last_one) {
+            show(id(banner), true);
+            bg(id(banner), 0x3A2A10);
+            text(id(banner_icon), "\U000F0111");
+            fg(id(banner_icon), col::AMBER);
+            text(id(banner_title), "That was the last one");
+            fg(id(banner_title), 0xFFD9A0);
+            text(id(banner_sub), r.on_list ? "On the shopping list · " + std::to_string(r.list_count) + " to buy"
+                                           : "Set a min stock to add it to the list");
+            fg(id(banner_sub), 0xE3C493);
+          } else if (ok && !undo && !r.older.empty()) {
+            show(id(banner), true);
+            bg(id(banner), 0x142235);
+            text(id(banner_icon), "\U000F0150");
+            fg(id(banner_icon), col::BLUE_TEXT);
+            text(id(banner_title), "Older pack waiting: " + r.older);
+            fg(id(banner_title), 0xCFE3FF);
+            text(id(banner_sub), "use that one next");
+            fg(id(banner_sub), 0x9DB6D6);
+          }
+      - script.execute: paint_undo
+      - script.execute: paint_side
+      - if:
+          condition:
+            lambda: "return !id(photo_url).empty();"
+          then:
+            - online_image.set_url:
+                id: product_img
+                url: !lambda "return id(photo_url);"
+            - component.update: product_img
+      - if:
+          condition:
+            lambda: 'return pantry::last.status == "lookup";'
+          then:
+            - script.execute: poll_lookup
+      # Take-out results go back home on their own; put-away keeps the last one up.
+      - if:
+          condition:
+            lambda: 'return !id(mode_in) && pantry::last.status != "lookup";'
+          then:
+            - lambda: |-
+                lv_bar_set_value(id(bar_return), 100, LV_ANIM_OFF);
+                lv_bar_set_value(id(bar_return), 0, LV_ANIM_ON);
+            - script.execute:
+                id: return_home
+                ms: !lambda 'return pantry::last.status == "empty" ? 20000 : 8000;'
+          else:
+            - script.stop: return_home
+
+  - id: return_home
+    mode: restart
+    parameters: { ms: int }
+    then:
+      - delay: !lambda "return ms;"
+      - script.execute: show_idle
+
+  - id: handle_scan
+    mode: queued
+    max_runs: 5
+    parameters: { code: string }
+    then:
+      - script.execute: wake
+      - lambda: "if (id(mode_in)) id(pa_left) = 120;"
+      - if:
+          condition:
+            lambda: "return !id(online);"
+          then:
+            - lambda: "pantry::enqueue(code, id(mode_in));"
+            - script.execute: show_offline
+          else:
+            - http_request.post:
+                url: ${server}/api/scan
+                request_headers:
+                  Content-Type: application/json
+                json: !lambda |-
+                  root["code"] = code;
+                  root["mode"] = id(mode_in) ? "in" : "out";
+                  root["device"] = "wall";
+                  root["default_location"] = "${location}";
+                  root["async_lookup"] = true;
+                capture_response: true
+                max_response_buffer_size: 2048
+                on_response:
+                  then:
+                    - lambda: |-
+                        if (response->status_code != 200 || !pantry::parse_reply(body, pantry::last))
+                          pantry::error_reply("Server error", "HTTP " + to_string(response->status_code));
+                    - script.execute: render_reply
+                    - script.execute: fetch_summary
+                on_error:
+                  then:
+                    - lambda: |-
+                        id(online) = false;
+                        pantry::enqueue(code, id(mode_in));
+                    - script.execute: show_offline
+
+  # A new barcode: the server is asking Open Food Facts, check back each second.
+  - id: poll_lookup
+    mode: restart
+    then:
+      - repeat:
+          count: 15
+          then:
+            - delay: 1s
+            - if:
+                condition:
+                  lambda: 'return pantry::last.status == "lookup";'
+                then:
+                  - http_request.get:
+                      url: !lambda 'return "${server}/api/scan/" + to_string(pantry::last.event_id);'
+                      capture_response: true
+                      max_response_buffer_size: 2048
+                      on_response:
+                        then:
+                          - if:
+                              condition:
+                                lambda: |-
+                                  pantry::Reply r;
+                                  if (response->status_code != 200 || !pantry::parse_reply(body, r)) return false;
+                                  if (r.status == "lookup" || r.event_id != pantry::last.event_id) return false;
+                                  pantry::last = r;
+                                  return true;
+                              then:
+                                - script.execute: render_reply
+
+  # The −/+ after a scan: "bought six", "took two". Changes that scan itself.
+  - id: adjust_last
+    parameters: { by: int }
+    then:
+      - if:
+          condition:
+            lambda: "return id(undo_event) > 0;"
+          then:
+            - lambda: "if (id(mode_in)) id(pa_left) = 120;"
+            - http_request.post:
+                url: !lambda 'return "${server}/api/scan/" + to_string(id(undo_event)) + "/adjust";'
+                request_headers:
+                  Content-Type: application/json
+                json: !lambda 'root["by"] = by;'
+                capture_response: true
+                max_response_buffer_size: 2048
+                on_response:
+                  then:
+                    - if:
+                        condition:
+                          lambda: "return response->status_code == 200 && pantry::parse_reply(body, pantry::last);"
+                        then:
+                          - script.execute: render_reply
+
+  - id: fix_count
+    then:
+      - if:
+          condition:
+            lambda: "return id(fix_event) > 0;"
+          then:
+            - http_request.post:
+                url: !lambda 'return "${server}/api/scan/" + to_string(id(fix_event)) + "/fix";'
+                capture_response: true
+                max_response_buffer_size: 2048
+                on_response:
+                  then:
+                    - if:
+                        condition:
+                          lambda: "return response->status_code == 200 && pantry::parse_reply(body, pantry::last);"
+                        then:
+                          - script.execute: render_reply
+
+  # UNDO opens a list of this scanner's recent scans; tapping one reverses it.
+  - id: open_undo
+    then:
+      - http_request.get:
+          url: ${server}/api/scan/recent?device=wall
+          capture_response: true
+          max_response_buffer_size: 2048
+          on_response:
+            then:
+              - if:
+                  condition:
+                    lambda: "return response->status_code == 200 && pantry::parse_recent(body);"
+                  then:
+                    - script.execute: render_undo
+          on_error:
+            then:
+              - lambda: "id(online) = false;"
+              - script.execute: show_offline
+
+  - id: render_undo
+    then:
+      - lambda: |-
+          using namespace pantry;
+          bool in = id(mode_in);
+          for (auto o : {id(home_card), id(res_card), id(lookup_card), id(unknown_card), id(offline_card), id(banner)})
+            show(o, false);
+          show(id(undo_card), true);
+          id(undo_open) = true;
+          bg(id(undo_card), in ? col::CARD_IN : col::CARD);
+          lv_obj_t *rows[] = {id(urow0), id(urow1), id(urow2), id(urow3), id(urow4)};
+          lv_obj_t *icons[] = {id(urow0_icon), id(urow1_icon), id(urow2_icon), id(urow3_icon), id(urow4_icon)};
+          lv_obj_t *names[] = {id(urow0_name), id(urow1_name), id(urow2_name), id(urow3_name), id(urow4_name)};
+          lv_obj_t *nums[] = {id(urow0_n), id(urow1_n), id(urow2_n), id(urow3_n), id(urow4_n)};
+          lv_obj_t *agos[] = {id(urow0_ago), id(urow1_ago), id(urow2_ago), id(urow3_ago), id(urow4_ago)};
+          for (int i = 0; i < 5; i++) {
+            bool has = i < (int) recent.size();
+            show(rows[i], has);
+            if (!has) continue;
+            auto &r = recent[i];
+            uint32_t c = r.in ? col::BLUE_TEXT : 0xC9D0DB;
+            // The newest is the one you most likely meant, so it stands out.
+            bg(rows[i], in ? (i == 0 ? 0x223654 : 0x182A42) : (i == 0 ? 0x232935 : 0x1C2129));
+            text(icons[i], r.in ? "\U000F005D" : "\U000F0045");
+            fg(icons[i], c);
+            text(names[i], r.title);
+            fg(names[i], r.unknown ? col::AMBER : col::TEXT);
+            text(nums[i], (r.in ? "+" : "−") + std::to_string(r.units));
+            fg(nums[i], c);
+            text(agos[i], r.ago);
+          }
+          show(id(undo_none), recent.empty());
+      - script.execute: paint_undo
+      - script.execute: paint_side
+      # Closes itself if nothing is picked.
+      - script.execute: { id: return_home, ms: 20000 }
+
+  - id: undo_pick
+    parameters: { i: int }
+    then:
+      - if:
+          condition:
+            lambda: "return i < (int) pantry::recent.size();"
+          then:
+            - lambda: "id(undo_event) = pantry::recent[i].event_id;"   # render_reply drops it from the trip
+            - http_request.post:
+                url: ${server}/api/undo
+                request_headers:
+                  Content-Type: application/json
+                json: !lambda 'root["event_id"] = pantry::recent[i].event_id;'
+                capture_response: true
+                max_response_buffer_size: 2048
+                on_response:
+                  then:
+                    - if:
+                        condition:
+                          lambda: "return response->status_code == 200 && pantry::parse_reply(body, pantry::last);"
+                        then:
+                          - script.execute: render_reply
+                          - script.execute: fetch_summary
+                on_error:
+                  then:
+                    - lambda: "id(online) = false;"
+                    - script.execute: show_offline
+
+  - id: show_offline
+    then:
+      - script.stop: return_home
+      - lambda: |-
+          using namespace pantry;
+          for (auto o : {id(home_card), id(res_card), id(lookup_card), id(unknown_card), id(undo_card), id(banner)}) show(o, false);
+          id(undo_open) = false;
+          show(id(offline_card), true);
+          text(id(lbl_retry), "Retrying every 15 s" + (id(last_try).empty() ? std::string() : " · last try " + id(last_try)));
+          id(undo_event) = 0;
+      - script.execute: paint_status
+      - script.execute: paint_undo
+      - script.execute: paint_side
+
+  # Top-right corner: location when all is well, "Offline · 3 waiting" when not.
+  - id: paint_status
+    then:
+      - lambda: |-
+          using namespace pantry;
+          bool ok = id(online) && queue.empty();
+          bg(id(status_dot), ok ? col::GREEN : col::RED);
+          fg(id(lbl_status), ok ? col::DIM : col::RED_TEXT);
+          text(id(lbl_status), ok ? std::string("${location}")
+                                  : (id(online) ? "Sending " : "Offline · ") + std::to_string(queue.size()) + " waiting");
+
+  # Also the "is the server back?" probe while offline.
+  - id: fetch_summary
+    mode: single
+    then:
+      - http_request.get:
+          url: ${server}/api/summary
+          capture_response: true
+          max_response_buffer_size: 2048
+          on_response:
+            then:
+              - lambda: |-
+                  using namespace pantry;
+                  if (response->status_code != 200 || !parse_summary(body)) return;
+                  auto &s = summary;
+                  text(id(lbl_buy_n), s.low_count ? std::to_string(s.low_count) : "");
+                  text(id(lbl_buy), s.low.empty() ? "All stocked up" : join(s.low, " · ", 6));
+                  fg(id(lbl_buy), s.low.empty() ? col::MUTED : col::TEXT);
+                  text(id(lbl_soon_n), s.expiring_count ? std::to_string(s.expiring_count) : "");
+                  text(id(lbl_soon), s.soon.empty() ? "Nothing close to its date" : soon_text(2));
+                  fg(id(lbl_soon), s.soon.empty() ? col::MUTED : col::TEXT);
+                  show(id(tile_inbox), s.inbox_count > 0);
+                  text(id(lbl_inbox_n), std::to_string(s.inbox_count));
+                  text(id(lbl_inbox), s.inbox_count == 1 ? "new item to name" : "new items to name");
+                  std::string night = std::to_string(s.low_count) + " to buy";
+                  if (s.expiring_count) night += "   ·   #C99A55 " + std::to_string(s.expiring_count) + " to use soon#";
+                  text(id(lbl_night_stats), night);
+              - if:
+                  condition:
+                    lambda: "return !id(online) && response->status_code == 200;"
+                  then:
+                    - lambda: "id(online) = true;"
+                    - script.execute: flush_queue
+              - script.execute: paint_side
+          on_error:
+            then:
+              - lambda: "id(online) = false;"
+
+  # Send the scans that piled up while the server was away, oldest first.
+  - id: flush_queue
+    mode: single
+    then:
+      - script.execute: paint_status
+      - while:
+          condition:
+            lambda: "return id(online) && !pantry::queue.empty();"
+          then:
+            - http_request.post:
+                url: ${server}/api/scan
+                request_headers:
+                  Content-Type: application/json
+                json: !lambda |-
+                  root["code"] = pantry::queue.front().code;
+                  root["mode"] = pantry::queue.front().in ? "in" : "out";
+                  root["device"] = "wall";
+                  root["default_location"] = "${location}";
+                  root["async_lookup"] = true;
+                on_response:
+                  then:
+                    - lambda: "pantry::queue.erase(pantry::queue.begin());"
+                on_error:
+                  then:
+                    - lambda: "id(online) = false;"
+      - script.execute: paint_status
+      - if:
+          condition:
+            lambda: "return pantry::queue.empty() && !lv_obj_has_flag(id(offline_card), LV_OBJ_FLAG_HIDDEN);"
+          then:
+            - script.execute: show_idle
+            - script.execute: fetch_summary
+
+  - id: go_to_sleep
+    then:
+      - lambda: "id(asleep) = true;"
+      - lvgl.page.show: { id: night_page, animation: FADE_IN, time: 600ms }
+      - light.turn_on: { id: backlight, brightness: 20% }
+
+  - id: wake
+    then:
+      - light.turn_on: { id: backlight, brightness: 100% }
+      - lambda: "lv_display_trigger_activity(NULL);"   # scans count as activity for the idle timer
+      - if:
+          condition:
+            lambda: "return id(asleep);"
+          then:
+            - lambda: "id(asleep) = false;"
+            - lvgl.page.show: { id: main_page, animation: FADE_IN, time: 300ms }
+
+interval:
+  # Clock, and the put-away countdown.
+  - interval: 1s
+    then:
+      - lambda: |-
+          using namespace pantry;
+          auto t = id(ha_time).now();
+          if (t.is_valid()) {
+            static int shown = -1;
+            if (t.minute != shown) {
+              shown = t.minute;
+              std::string hm = t.strftime("%H:%M");
+              text(id(lbl_clock), hm);
+              text(id(lbl_night_clock), hm);
+              text(id(lbl_date), t.strftime("%a ") + std::to_string(t.day_of_month) + t.strftime(" %b"));
+              text(id(lbl_night_date), t.strftime("%A ") + std::to_string(t.day_of_month) + t.strftime(" %B"));
+            }
+          }
+          if (!id(mode_in)) return;
+          lv_bar_set_value(id(bar_pa), id(pa_left), LV_ANIM_ON);
+          text(id(lbl_pa_timer), "back to take-out in #FFFFFF " + mmss(id(pa_left)) + "#");
+          int n = trip_items();
+          text(id(lbl_pa_count), n ? "· " + std::to_string(n) + (n == 1 ? " item so far" : " items so far") : "");
+      - if:
+          condition:
+            lambda: "return id(mode_in) && --id(pa_left) <= 0;"
+          then:
+            - script.execute: { id: set_mode, go_in: false }
+
+  - interval: 60s
+    then:
+      - if:
+          condition:
+            lambda: "return id(online) && pantry::queue.empty();"
+          then:
+            - script.execute: fetch_summary
+
+  # While offline: try the server again, and keep the "last try" time current.
+  - interval: 15s
+    then:
+      - if:
+          condition:
+            lambda: "return !id(online) || !pantry::queue.empty();"
+          then:
+            - lambda: |-
+                auto t = id(ha_time).now();
+                if (t.is_valid()) id(last_try) = t.strftime("%H:%M");
+            - script.execute: fetch_summary
+            - if:
+                condition:
+                  lambda: "return id(online) && !pantry::queue.empty();"
+                then:
+                  - script.execute: flush_queue
+            - if:
+                condition:
+                  lambda: "return !id(online);"
+                then:
+                  - script.execute: show_offline
+
+text_sensor:
+  - platform: template
+    name: Last scan
+    id: last_scan
+    lambda: "return pantry::last.title;"
+    update_interval: 5s

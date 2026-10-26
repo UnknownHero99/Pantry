@@ -1,0 +1,68 @@
+# Pantry wall scanner, simulated: the same screens (pantry-ui.yaml) in an
+# 800x480 desktop window, so the UI can be tried without the board.
+#   - the mouse is the touchscreen
+#   - `sim/scan <barcode>` stands in for the barcode module
+#   - it talks to the pantry app at ${server}, e.g. `npm run dev`
+# Build and open it with sim/run.sh (see the README).
+
+substitutions:
+  name: pantry-sim
+  server: http://127.0.0.1:5190
+  location: Pantry
+
+esphome:
+  name: ${name}
+  friendly_name: Pantry scanner (simulator)
+  includes:
+    - sim/sim_input.h
+  # The JPEG decoder's x86 SSE path packs colours differently from the plain C
+  # path the ESP32-S3 uses (red and blue come out swapped). Match the board.
+  build_flags:
+    - -DNO_SIMD
+
+packages:
+  ui: !include pantry-ui.yaml
+
+host:
+
+logger:
+
+time:
+  - platform: host
+    id: ha_time
+
+display:
+  - platform: sdl
+    id: main_display
+    update_interval: never
+    auto_clear_enabled: false
+    dimensions:
+      width: 800
+      height: 480
+
+touchscreen:
+  - platform: sdl
+    id: touch
+    display: main_display
+    on_touch:
+      - script.execute: wake
+
+# Nothing to dim in a window, but the screens turn the backlight up and down.
+output:
+  - platform: template
+    id: backlight_pwm
+    type: float
+    write_action:
+      - lambda: ""
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    id: backlight
+
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          std::string code = sim::read_scan();
+          if (!code.empty()) id(handle_scan)->execute(code);

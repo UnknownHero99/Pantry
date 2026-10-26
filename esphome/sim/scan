@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Pretend to scan a barcode on the simulator:  esphome/sim/scan 3017620422003
+fifo="$(dirname "$0")/scan.fifo"
+[ -p "$fifo" ] || { echo "Start the simulator first: esphome/sim/run.sh" >&2; exit 1; }
+echo "$*" > "$fifo"

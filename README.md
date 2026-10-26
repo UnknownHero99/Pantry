@@ -111,8 +111,9 @@ cp secrets.example.yaml secrets.yaml   # Wi-Fi, API key: openssl rand -base64 32
 docker run --rm -it -v "$PWD":/config --device /dev/ttyUSB0 esphome/esphome run pantry-scanner.yaml
 ```
 
-Or paste it into the ESPHome dashboard in Home Assistant (copy `pantry_ui.h` next to the
-YAML too; the display code lives there). The board shows up in HA with a backlight light
+Or use the ESPHome dashboard in Home Assistant: copy `pantry-scanner.yaml`,
+`pantry-ui.yaml` (the screens, included as a package) and `pantry_ui.h` into its config
+folder. The board shows up in HA with a backlight light
 and a "Last scan" sensor, and takes its clock from HA, so it needs no internet.
 
 Set `ORIGIN` on the server: the unknown-barcode screen shows a QR code of
@@ -121,6 +122,21 @@ Set `ORIGIN` on the server: the unknown-barcode screen shows a QR code of
 The config is validated and compiles against ESPHome 2026.10. The **display timing and
 pins are the commonly published ones for this board** and have not been tested on
 hardware. If the image is shifted, try `pclk_frequency: 12MHz` or toggle `pclk_inverted`.
+
+### Try it without the hardware
+
+`pantry-sim.yaml` runs the same screens in an 800×480 window on a Linux desktop (X11).
+The mouse is the touchscreen, and a small script stands in for the barcode module.
+It talks to the app on `http://127.0.0.1:5190`, so start that first (`npm run dev`).
+
+```bash
+esphome/sim/run.sh                   # builds a Docker image with SDL, compiles, opens the window
+esphome/sim/scan 3017620422003       # "scan" a barcode (Nutella); PNTRY:I:000001 for a label
+```
+
+The first build takes a few minutes. Set `ORIGIN` in `.env` to see the QR code on
+the unknown-barcode screen. The backlight does nothing in the window, so the night screen
+shows at full brightness.
 
 **Network:** if the scanner lives on the IoT VLAN, the router needs an allow rule from
 it to the NAS on TCP 5190.
