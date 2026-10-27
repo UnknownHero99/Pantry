@@ -19,8 +19,9 @@ is on the back, so JLCPCB assembles one side only. Goes into the
 - **Touch**: GT911 on a 6-pin 1.0 mm ribbon; IO39 SDA, IO40 SCL, IO41 INT, IO42 RST.
 - **Scanner** on UART0 (IO43/44), which is free because flashing goes over USB:
   - **J4**: SparkFun 2D Barcode Scanner Breakout (DE2120, red aiming line), 3.3 V, on a
-    1×6 socket. Solder a **right-angle** header to the SparkFun board so it lies flat behind
-    this board, module facing down.
+    1×6 socket. In the [enclosure](../enclosure) it sits in the bevelled mouth under the
+    screen and connects with a short 6-wire Dupont cable; without the enclosure a
+    right-angle header plugs it straight in.
   - **J5**: any 5 V UART module (GM65, GM805, GM861…) on a 4-pin 1.25 mm cable instead.
   Fit only one.
 - **Buzzer** MLT-8530 (IO2), **status LED** side-view SK6812 on the bottom edge shining

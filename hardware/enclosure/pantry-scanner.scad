@@ -1,178 +1,223 @@
-// Pantry wall scanner enclosure, for the mainboard (hardware/mainboard) behind a
-// 4.3" 800x480 capacitive panel, with the SparkFun 2D Barcode Scanner looking down.
+// Pantry wall scanner enclosure, price-checker style: the screen face tilts up toward
+// you, an arrow under it points to the scanner in a bevelled "mouth" that looks down
+// and forward, where you hold the product. For the mainboard (hardware/mainboard)
+// behind a 4.3" 800x480 capacitive panel, and the SparkFun 2D Barcode Scanner.
 //
 // Two printed parts:
-//   front  - bezel, walls and a chin under the display (radar, scanner window, status-light slot)
-//   back   - back plate: closes the box with 4 x M3, hangs on 2 wall screws (keyholes),
-//            and its 4 posts press the board against the panel, pins in the board's corner holes
+//   shell - everything but the back. Prints standing on its flat bottom, no supports:
+//           every face is within 45 degrees of vertical, the windows have chamfered edges.
+//   back  - back plate: closes the shell with 4 x M3, hangs on 2 wall screws (keyholes),
+//           and its 4 posts press the board against the panel (pins in the board's holes).
 //
-// Render one part with:  openscad -D 'part="front"' -o front.stl pantry-scanner.scad
-// part = "assembly" shows everything, with stand-ins for the panel, board and modules.
+//   openscad -D 'part="shell"' -o shell.stl pantry-scanner.scad
 //
-// Frame: X right (seen from the front), Y down from the panel's top edge, Z back from
-// the panel's glass. The board's own KiCad coordinates are seen from its back, so its
-// x runs right to left here (see pcb()).
+// Frame: X right (seen from the front), Y up, Z out of the wall. The back is z = 0.
 
-part = "assembly";            // front | back | assembly
+part = "assembly";            // shell | back | assembly | v_shell | v_back | v_panel | v_pcb | v_scanner | v_radar
 
 /* [Panel: 4.3" 800x480 RGB TFT with capacitive touch] */
 panel_w = 105.5;              // outline of the cover glass
 panel_h = 67.2;
 panel_t = 5.0;                // glass + TFT + foam tape
-lip = 2.5;                    // how far the bezel overlaps the glass edge
+lip = 2.5;                    // how far the bezel covers the glass edge
+
+/* [Shape] */
+tilt = 15;                    // screen face, degrees back from vertical
+mouth_angle = 45;             // where the scanner looks: degrees forward of straight down
+top_margin = 12;              // face above the panel
+chin = 19;                    // face below the panel (radar behind it, arrow on it)
+mouth_len = 34;               // the bevelled face the scanner looks through
+depth_top = 24;               // depth at the top of the screen face
+wall = 2.2;
+gap = 0.4;                    // around the panel
+round_r = 2.5;                // edge rounding
+corner_top = 30;              // front-view corner radius, top
+corner_bottom = 6;
+back_t = 3;
 
 /* [Board] */
-pcb_w = 100; pcb_h = 60; pcb_t = 1.6;
+pcb_t = 1.6;
 pcb_top = 6.5;                // board's top edge below the panel's top (the antenna hangs over it)
 pcb_holes = [[3.5, 3.5], [96.5, 3.5], [3.5, 56.5], [96.5, 56.5]];
 
-/* [Scanner: SparkFun 2D Barcode Scanner on a right-angle header] */
-scanner_socket = true;        // false: header soldered straight into the board (39 mm instead of 48 mm deep)
+/* [Scanner: SparkFun 2D Barcode Scanner, module facing the window] */
 sf_w = 44.45; sf_d = 25.4;
-sf_gnd_x = 10;                // board x of the socket's GND pin (design.py SF_GND_X)
-sf_row_y = 47;                // board y of the socket row (design.py SF_ROW_Y)
-scan_win = [30, 24];          // window in the chin bottom, X by Z
+module_h = 12.5;              // the DE2120 module's height above the SparkFun board
+scan_win = [32, 24];          // window in the mouth, across by along
 
-/* [Case] */
-wall = 2.2;
-face = 2.0;                   // front face in front of the glass
-gap = 0.4;                    // clearance around the panel
-chin = 18;                    // room under the display, inside
-back_t = 2.5;
-corner_r = 4;
+/* [Radar: HLK-LD2410C behind the chin] */
+radar = [22, 16];
+radar_u = 20;                 // its left edge, from the centre line
 
-/* [Radar: HLK-LD2410C behind the chin face] */
-radar = [22, 16];             // board, X by Y
-radar_x = 80;                 // its left edge
-
-$fn = 48;
+$fn = 40;
 
 // ── derived ──────────────────────────────────────────────────────────────
-pcb_x0 = (panel_w - pcb_w) / 2;                         // board's left edge, from the front
-pcb_z = panel_t;                                         // board's front face
-pcb_back = pcb_z + pcb_t;
-sf_z0 = pcb_back + (scanner_socket ? 8.5 : 0) + 3;      // scanner board's near edge (socket + header bend)
-depth = sf_z0 + sf_d + 2;                                // inside, glass to back plate
-in_w = panel_w + 2 * gap;
-in_h = panel_h + gap + chin;
-out = [in_w + 2 * wall, in_h + gap + 2 * wall, depth + face];
-echo(str("outside: ", out[0], " x ", out[1], " x ", out[2] + back_t, " mm"));
+W = panel_w + 2 * (gap + wall);                     // outside width
+s_face = top_margin + panel_h + chin;               // screen face length, top to mouth
+mouth_y = mouth_len * sin(mouth_angle);             // mouth's top edge height (its bottom edge is y = 0)
+face_z_bottom = depth_top + s_face * sin(tilt);
+face_top_y = mouth_y + s_face * cos(tilt);
+H = face_top_y + depth_top;                         // the top bevel is 45 degrees
+bottom_z = face_z_bottom - mouth_len * cos(mouth_angle);
+echo(str("outside: ", W, " wide x ", H, " high x ", face_z_bottom + back_t, " deep (mm)"));
 
-// A board point (KiCad x, y) in this frame.
-function bx(x) = pcb_x0 + (pcb_w - x);
-function by(y) = pcb_top + y;
+// Screen-face frame: u right, s down the face from its top edge, w into the case.
+module in_face() multmatrix([[1, 0, 0, 0], [0, -cos(tilt), -sin(tilt), face_top_y], [0, sin(tilt), -cos(tilt), depth_top]]) children();
+// Mouth frame: u right, m down the mouth from its top edge, k into the case.
+module in_mouth() multmatrix([[1, 0, 0, 0], [0, -sin(mouth_angle), cos(mouth_angle), mouth_y], [0, -cos(mouth_angle), -sin(mouth_angle), face_z_bottom]]) children();
 
-// Scanner module: the DE2120 sits on the half of the SparkFun board away from its GND pin.
-scan_cx = bx(sf_gnd_x - 6.35 + 0.73 * sf_w);             // centre of the DE2120 module
-scan_cz = sf_z0 + sf_d / 2;
+// A board point (KiCad x, y; KiCad shows the board from its back) in the face frame.
+function bu(x) = 50 - x;
+function bs(y) = top_margin + pcb_top + y;
+board_w = wall + panel_t;                           // the board's front face, in w
 
-// Screw bosses: top corners behind the panel's corners, bottom corners in the chin.
-boss = [[-gap + 3, -gap + 3], [panel_w + gap - 3, -gap + 3],
-	[-gap + 3, in_h - gap - 3], [panel_w + gap - 3, in_h - gap - 3]];
+// ── outline ──────────────────────────────────────────────────────────────
+// Side profile [z, y]: back, bottom, mouth, screen face, top bevel. Convex.
+function profile(back = 0) = [[back, 0], [bottom_z, 0], [face_z_bottom, mouth_y], [depth_top, face_top_y], [back, H - back]];
 
-module rounded_box(size, r) {
-	hull() for (x = [r, size[0] - r], y = [r, size[1] - r]) translate([x, y, 0]) cylinder(r = r, h = size[2]);
+module side(shape) rotate([0, -90, 0]) linear_extrude(W + 2, center = true) children();
+module front_view() linear_extrude(200) children();
+
+module silhouette(inset = 0) offset(delta = -inset) hull() {
+	for (x = [-W / 2 + corner_bottom, W / 2 - corner_bottom]) translate([x, corner_bottom]) circle(corner_bottom);
+	for (x = [-W / 2 + corner_top, W / 2 - corner_top]) translate([x, H - corner_top]) circle(corner_top);
 }
 
-module shell_outline(h) {
-	translate([-gap - wall, -gap - wall, 0]) rounded_box([out[0], out[1], h], corner_r);
+module outer() intersection() {
+	minkowski() {
+		intersection() {
+			side() offset(delta = -round_r) polygon(profile(-round_r - 2));
+			translate([0, 0, -10]) front_view() silhouette(round_r);
+		}
+		sphere(round_r, $fn = 16);
+	}
+	translate([-W, -1, 0]) cube([2 * W, H + 10, 100]);   // flat back at z = 0
 }
 
-// ── front ────────────────────────────────────────────────────────────────
-module front() {
+module cavity() intersection() {
+	side() offset(delta = -wall) polygon(profile(-10));
+	translate([0, 0, -20]) front_view() silhouette(wall);
+}
+
+// ── shell ────────────────────────────────────────────────────────────────
+module shell() {
 	difference() {
 		union() {
-			difference() {
-				translate([0, 0, -face]) shell_outline(out[2]);
-				// the inside
-				translate([-gap, -gap, 0]) rounded_box([in_w, in_h, depth + 1], corner_r - wall);
+			difference() { outer(); cavity(); }
+			bosses();
+			// radar: two rails on the inside of the chin it slides between
+			in_face() for (du = [-1.6, radar[0] + 0.2])
+				translate([radar_u + du, top_margin + panel_h + 1.5, wall]) cube([1.4, chin - 2.5, 5]);
+			// scanner: pegs with pins for the SparkFun board's two holes. Mounted this way
+			// round, it lies on top of them (the module hangs toward the window).
+			in_mouth() {
+				m0 = (mouth_len - sf_d) / 2;
+				left = -0.73 * sf_w;                  // its hole edge; this centres the module
+				for (m = [m0 + 2.54, m0 + sf_d - 2.54]) {
+					translate([left + 2.54, m, wall]) cylinder(d = 5.5, h = module_h + 0.5);
+					translate([left + 2.54, m, wall]) cylinder(d = 2.8, h = module_h + 0.5 + pcb_t + 1.5);
+				}
 			}
-			// screw bosses, from just behind the panel to the back plate
-			for (b = boss) translate([b[0], b[1], panel_t + 0.5]) cylinder(d = 7, h = depth - panel_t - 0.5);
-			// radar cradle on the chin face: two rails it slides between
-			for (dx = [-1.6, radar[0] + 0.2]) translate([radar_x + dx, panel_h + gap + 1, 0]) cube([1.4, radar[1], 6]);
 		}
-		// display window
-		translate([lip, lip, -face - 1]) rounded_box([panel_w - 2 * lip, panel_h - 2 * lip, face + 2], 1.5);
-		// M3 pilot holes (self-tapping) in the bosses
-		for (b = boss) translate([b[0], b[1], panel_t + 3]) cylinder(d = 2.6, h = depth);
-		// scanner window in the chin bottom
-		translate([scan_cx - scan_win[0] / 2, in_h - gap - 1, scan_cz - scan_win[1] / 2]) cube([scan_win[0], wall + 2, scan_win[1]]);
-		// status light: the side-view LED at board (90, 57) shines down onto this slot
-		translate([bx(90) - 5, in_h - gap - 1, pcb_back - 1]) cube([10, wall + 2, 5]);
-		// USB-C on the left wall (board x 100 edge, y 30)
-		translate([-gap - wall - 1, by(30), pcb_back + 1.6]) rotate([0, 90, 0]) hull()
-			for (d = [-2.75, 2.75]) translate([0, d, 0]) cylinder(d = 7.5, h = wall + 2);
-		// buzzer vents in the top wall over the buzzer (board 88, 6.5)
-		for (i = [-2:2]) translate([bx(88) + i * 3 - 0.8, -gap - wall - 1, pcb_back + 2]) cube([1.6, wall + 2, 12]);
+		// screen window, edges chamfered 45 degrees (so its top edge needs no bridge)
+		in_face() hull() {
+			translate([-(panel_w / 2 - lip), top_margin + lip, wall - 0.01]) cube([panel_w - 2 * lip, panel_h - 2 * lip, 0.02]);
+			translate([-(panel_w / 2 - lip + wall), top_margin + lip - wall, -0.02]) cube([panel_w - 2 * lip + 2 * wall, panel_h - 2 * lip + 2 * wall, 0.02]);
+		}
+		// scanner window, chamfered the same way
+		in_mouth() hull() {
+			translate([-scan_win[0] / 2, (mouth_len - scan_win[1]) / 2, wall - 0.01]) cube([scan_win[0], scan_win[1], 0.02]);
+			translate([-scan_win[0] / 2 - wall, (mouth_len - scan_win[1]) / 2 - wall, -0.02]) cube([scan_win[0] + 2 * wall, scan_win[1] + 2 * wall, 0.02]);
+		}
+		// status light: the side-view LED at board (90, 57) shines down onto this slit
+		in_mouth() translate([bu(90) - 5, 9, -1]) cube([10, 4, wall + 2]);
+		// arrow pointing down at the scanner, engraved 1 mm into the chin
+		in_face() translate([0, top_margin + panel_h + chin / 2, -0.5]) linear_extrude(1.5)
+			polygon([[-8, -4.5], [-5.5, -4.5], [0, 1], [5.5, -4.5], [8, -4.5], [0, 4.5]]);
+		// USB-C in the left wall (board's x = 100 edge, y = 30)
+		in_face() translate([-W / 2 - 1, bs(30), board_w + pcb_t + 1.6]) rotate([0, 90, 0]) hull()
+			for (d = [-2.75, 2.75]) translate([0, d, 0]) cylinder(d = 7.5, h = wall + 3);
+		// buzzer vents in the left wall, beside the buzzer (board 88, 6.5)
+		in_face() for (i = [-2:2]) translate([-W / 2 - 1, bs(6.5) + 3 * i - 0.8, board_w + pcb_t + 0.5]) cube([wall + 3, 1.6, 8]);
+		// M3 pilot holes in the bosses, from the back
+		for (b = boss_xy()) translate([b[0], b[1], -1]) cylinder(d = 2.6, h = 13);
 	}
 }
 
-// ── back ─────────────────────────────────────────────────────────────────
+// Screw bosses: top corners just below the top bevel, bottom corners above the floor.
+function boss_xy() = [for (x = [-(W / 2 - wall - 3.5), W / 2 - wall - 3.5], y = [9, face_top_y - 6]) [x, y]];
+// Teardrop-shaped in front view, so they print upright without support.
+module boss_shape(grow = 0) offset(grow) hull() {
+	circle(3.5);
+	translate([0, -3.5 * sqrt(2)]) rotate(45) square(0.1, center = true);
+}
+module bosses() for (b = boss_xy()) translate([b[0], b[1], 0]) linear_extrude(12) boss_shape();
+
+// ── back plate ───────────────────────────────────────────────────────────
+// The shell's opening over the first 2 mm, shrunk by `inset`: the front outline,
+// cut at the bottom by the floor and at the top by the 45-degree bevel's inside.
+module opening(inset) intersection() {
+	silhouette(wall + inset);
+	translate([-W, wall + inset]) square([2 * W, H - wall * sqrt(2) - 2 - 2 * inset - wall]);
+}
+
 module back() {
 	difference() {
 		union() {
-			translate([0, 0, depth]) shell_outline(back_t);
-			// lip that keys into the shell
-			translate([0, 0, depth - 2]) difference() {
-				translate([-gap + 0.3, -gap + 0.3, 0]) rounded_box([in_w - 0.6, in_h - 0.6, 2], corner_r - wall);
-				translate([-gap + 2, -gap + 2, -1]) rounded_box([in_w - 4, in_h - 4, 4], corner_r - wall - 1);
-			}
-			// posts that hold the board against the panel
-			for (h = pcb_holes) translate([bx(h[0]), by(h[1]), 0]) {
-				translate([0, 0, pcb_back]) cylinder(d = 6, h = depth - pcb_back);
-				translate([0, 0, pcb_z + 0.3]) cylinder(d = 2.8, h = pcb_t + 0.5);   // pin in the board's hole
+			translate([0, 0, -back_t]) linear_extrude(back_t) silhouette(round_r * 0.3);
+			// lip that keys into the shell's opening (lower at the top, where the bevel is)
+			linear_extrude(2) difference() { opening(0.3); opening(2.3); }
+			// posts that hold the board against the panel, square to the board
+			for (h = pcb_holes) {
+				s = bs(h[1]);
+				w_wall = (depth_top + s * sin(tilt)) / cos(tilt);    // where the post meets the plate
+				in_face() translate([bu(h[0]), s, board_w + pcb_t]) {
+					cylinder(d = 6, h = w_wall - board_w - pcb_t + 1);
+					translate([0, 0, -pcb_t + 0.2]) cylinder(d = 2.8, h = pcb_t);   // pin in the board's hole
+				}
 			}
 		}
-		// screws into the bosses
-		for (b = boss) translate([b[0], b[1], depth - 3]) {
-			cylinder(d = 3.4, h = back_t + 4);
-			translate([0, 0, back_t + 3 - 1.8]) cylinder(d1 = 3.4, d2 = 6.4, h = 1.81);
+		// clear of the bosses, and countersunk screws into them
+		for (b = boss_xy()) translate([b[0], b[1], 0]) {
+			linear_extrude(3) boss_shape(0.4);
+			translate([0, 0, -back_t - 1]) cylinder(d = 3.4, h = back_t + 2);
+			translate([0, 0, -back_t - 0.01]) cylinder(d1 = 6.4, d2 = 3.4, h = 1.6);
 		}
-		// bosses pass the lip
-		for (b = boss) translate([b[0], b[1], depth - 3]) cylinder(d = 7.6, h = 3);
-		// keyholes for two wall screws (head up to 8 mm)
-		for (x = [out[0] / 2 - wall - gap - 30, out[0] / 2 - wall - gap + 30]) translate([x, in_h * 0.35, depth - 1]) {
+		// keyholes for two wall screws (heads up to 8 mm)
+		for (x = [-30, 30]) translate([x, H * 0.62, -back_t - 1]) {
 			cylinder(d = 8.5, h = back_t + 2);
 			translate([-2.1, 0, 0]) cube([4.2, 9, back_t + 2]);
 		}
-		// cable channel from the USB-C down to the bottom
-		translate([-gap - wall - 1, by(30) - 4, depth + back_t - 1.5]) cube([wall + 6, in_h, 2]);
 	}
 }
 
-// ── stand-ins, for the assembly view ─────────────────────────────────────
-module pcb() {
-	color("darkgreen") translate([pcb_x0, pcb_top, pcb_z]) cube([pcb_w, pcb_h, pcb_t]);
-	color("silver") translate([bx(50) - 9, pcb_top - 6, pcb_back]) cube([18, 25.5, 3.2]);   // ESP32 module
-	color("dimgray") translate([bx(95.5) - 0.5, by(30) - 4.5, pcb_back]) cube([7.5, 9, 3.2]);  // USB-C
+// ── stand-ins for the pictures ───────────────────────────────────────────
+module panel() in_face() translate([-panel_w / 2, top_margin, wall]) cube([panel_w, panel_h, panel_t - 0.4]);
+module pcb() in_face() {
+	translate([bu(100), bs(0), board_w]) cube([100, 60, pcb_t]);
+	translate([bu(59), bs(-6), board_w + pcb_t]) cube([18, 25.5, 3.2]);     // ESP32 module
 }
-module scanner() {
-	color("red") translate([bx(sf_gnd_x) + 6.35 - sf_w, by(sf_row_y), sf_z0]) cube([sf_w, 1.6, sf_d]);
-	color("black") translate([scan_cx - 11, by(sf_row_y) + 1.6, sf_z0 + 2]) cube([22, 12, 21]);
+module scanner() in_mouth() {
+	m0 = (mouth_len - sf_d) / 2;
+	translate([-0.73 * sf_w, m0, wall + module_h + 0.5]) cube([sf_w, sf_d, pcb_t]);
+	translate([-11, mouth_len / 2 - 10.75, wall + 0.5]) cube([22, 21.5, module_h]);
 }
-module panel() {
-	color("black") cube([panel_w, panel_h, panel_t - 0.4]);
-	color("steelblue", 0.6) translate([lip + 2, lip + 2, -0.01]) cube([panel_w - 2 * lip - 4, panel_h - 2 * lip - 4, 0.1]);
-}
-module radar_board() {
-	color("blue") translate([radar_x, panel_h + gap + 1, 1]) cube([radar[0], radar[1], 1.6]);
-}
+module radar_board() in_face() translate([radar_u, top_margin + panel_h + 2, wall]) cube([radar[0], radar[1], 1.6]);
 
-explode = 30;                 // assembly view: how far the back plate stands off
+explode = 30;
 
-// Parts come out in print orientation; the assembly stands upright (Z up, front toward -Y).
-if (part == "front") front();                         // face down on the bed
-else if (part == "back") rotate([180, 0, 0]) back();  // outside face down
-else if (part == "assembly") rotate([-90, 0, 0]) {
-	front();
-	translate([0, 0, explode]) back();
+// Printable parts in print orientation; everything else as it hangs on the wall,
+// turned so Z is up and the front faces -Y.
+if (part == "shell") rotate([90, 0, 0]) shell();          // standing on its flat bottom
+else if (part == "back") translate([0, 0, back_t]) back();  // outside face down, posts up
+else if (part == "assembly") rotate([90, 0, 0]) {
+	shell();
+	translate([0, 0, -explode]) back();
 	panel(); pcb(); scanner(); radar_board();
 }
-// Single pieces in assembly position, for render.sh's pictures.
-if (part == "v_front") rotate([-90, 0, 0]) front();
-if (part == "v_back") rotate([-90, 0, 0]) back();
-if (part == "v_panel") rotate([-90, 0, 0]) panel();
-if (part == "v_pcb") rotate([-90, 0, 0]) pcb();
-if (part == "v_scanner") rotate([-90, 0, 0]) scanner();
-if (part == "v_radar") rotate([-90, 0, 0]) radar_board();
+if (part == "v_shell") rotate([90, 0, 0]) shell();
+if (part == "v_back") rotate([90, 0, 0]) back();
+if (part == "v_panel") rotate([90, 0, 0]) panel();
+if (part == "v_pcb") rotate([90, 0, 0]) pcb();
+if (part == "v_scanner") rotate([90, 0, 0]) scanner();
+if (part == "v_radar") rotate([90, 0, 0]) radar_board();
