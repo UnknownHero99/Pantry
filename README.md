@@ -153,6 +153,11 @@ Labels encode `PNTRY:I:000123`. The wall scanner and phone camera both read them
 | **GM65** (or GM861S) barcode module, 1D + 2D, **TTL UART** (not the RS-232 variant) | ~€18 |
 | JST 1.25 mm 4-pin cable, 5 V 2 A USB-C supply, wall enclosure | |
 
+**Optional carrier board** ([hardware/scanner-carrier](hardware/scanner-carrier)): a small
+PCB behind the display with the SparkFun 2D Barcode Scanner (red aiming line), a buzzer, a
+status LED and a radar that wakes the screen as you walk up. Gerbers and JLCPCB assembly
+files are in its `fab/` folder; enable it in the firmware with the `carrier` package.
+
 ### Wiring
 
 Board's 4-pin **UART** connector → scanner:

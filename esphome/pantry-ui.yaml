@@ -1045,6 +1045,13 @@ script:
           }
       - script.execute: paint_undo
       - script.execute: paint_side
+      - script.execute:
+          id: feedback
+          kind: !lambda |-
+            auto &r = pantry::last;
+            if (r.mode == "undo") return std::string("undo");
+            if (r.status == "ok") return std::string(id(mode_in) ? "in" : "out");
+            return r.status;   // lookup, unknown, empty, box, error
       - if:
           condition:
             lambda: "return !id(photo_url).empty();"
@@ -1092,6 +1099,7 @@ script:
           then:
             - lambda: "pantry::enqueue(code, id(mode_in));"
             - script.execute: show_offline
+            - script.execute: { id: feedback, kind: offline }
           else:
             - http_request.post:
                 url: ${server}/api/scan
@@ -1118,6 +1126,7 @@ script:
                         id(online) = false;
                         pantry::enqueue(code, id(mode_in));
                     - script.execute: show_offline
+                    - script.execute: { id: feedback, kind: offline }
 
   # A new barcode: the server is asking Open Food Facts, check back each second.
   - id: poll_lookup
@@ -1368,6 +1377,13 @@ script:
           then:
             - script.execute: show_idle
             - script.execute: fetch_summary
+
+  # Beep / light for a scan: out, in, undo, lookup, unknown, empty, box, error, offline.
+  # Nothing by default; pantry-carrier.yaml (the carrier board's buzzer and LED) fills it in.
+  - id: feedback
+    parameters: { kind: string }
+    then:
+      - logger.log: { format: "feedback: %s", args: [kind.c_str()], level: VERBOSE }
 
   - id: go_to_sleep
     then:

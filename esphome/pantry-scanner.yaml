@@ -17,13 +17,17 @@ substitutions:
   name: pantry-scanner
   server: http://192.168.10.10:5190   # pantry app, reachable from this VLAN
   location: Pantry                     # where this unit hangs; used for products with no usual place yet
+  scanner_baud: "9600"                 # GM65 default; set the SparkFun DE2120 to 9600 too, or change this
 
 esphome:
   name: ${name}
   friendly_name: Pantry scanner
 
 # The screens and everything they do; shared with pantry-sim.yaml.
+# With the carrier board (hardware/scanner-carrier: buzzer, status LED, radar),
+# uncomment carrier.
 packages:
+  # carrier: !include pantry-carrier.yaml
   ui: !include pantry-ui.yaml
 
 esp32:
@@ -66,21 +70,22 @@ time:
 # ── hardware ────────────────────────────────────────────────────────────
 
 uart:
-  id: scanner_uart
-  tx_pin: GPIO43
-  rx_pin: GPIO44
-  baud_rate: 9600
-  debug:
-    direction: RX
-    dummy_receiver: true
-    after:
-      delimiter: "\r"
-      timeout: 100ms   # also works if the CR suffix isn't enabled
-    sequence:
-      - lambda: |-
-          std::string code;
-          for (auto b : bytes) if (b > 32 && b < 127) code += (char) b;
-          if (!code.empty()) id(handle_scan)->execute(code);
+  # A list, so pantry-carrier.yaml can add the radar UART next to it.
+  - id: scanner_uart
+    tx_pin: GPIO43
+    rx_pin: GPIO44
+    baud_rate: ${scanner_baud}
+    debug:
+      direction: RX
+      dummy_receiver: true
+      after:
+        delimiter: "\r"
+        timeout: 100ms   # also works if the CR suffix isn't enabled
+      sequence:
+        - lambda: |-
+            std::string code;
+            for (auto b : bytes) if (b > 32 && b < 127) code += (char) b;
+            if (!code.empty()) id(handle_scan)->execute(code);
 
 output:
   - platform: ledc
