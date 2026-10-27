@@ -30,8 +30,8 @@
 	{#if data.items.length}<span class="aside">{got.length} of {data.items.length} in the trolley</span>{/if}
 </div>
 <nav class="seg" aria-label="List" style="margin-top: 12px">
-	<a class:on={data.list === 'groceries'} href="/shopping" data-sveltekit-replacestate style="display: grid; place-items: center; height: 44px; border-radius: 10px; color: inherit">Groceries{data.counts.groceries ? ` · ${data.counts.groceries}` : ''}</a>
-	<a class:on={data.list === 'garage'} href="/shopping?list=garage" data-sveltekit-replacestate style="display: grid; place-items: center; height: 44px; border-radius: 10px; color: inherit">Garage{data.counts.garage ? ` · ${data.counts.garage}` : ''}</a>
+	<a class:on={data.list === 'groceries'} href="/shopping" data-sveltekit-replacestate>Groceries{data.counts.groceries ? ` · ${data.counts.groceries}` : ''}</a>
+	<a class:on={data.list === 'garage'} href="/shopping?list=garage" data-sveltekit-replacestate>Garage{data.counts.garage ? ` · ${data.counts.garage}` : ''}</a>
 </nav>
 {#if data.ha}
 	<p class="lede" style="display: flex; align-items: center; gap: 6px">

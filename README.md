@@ -20,6 +20,26 @@ know what you have.
 
 Stack: SvelteKit (adapter-node) + SQLite (`node:sqlite`, no native deps), one container.
 
+## Screenshots
+
+The wall scanner: waiting for a scan, a product taken out, a home-made package taken out.
+
+<p>
+  <img src="docs/screenshots/wall-home.png" width="32%" alt="Wall scanner waiting for a scan, with the shopping list and use-soon items">
+  <img src="docs/screenshots/wall-out.png" width="32%" alt="Wall scanner after taking out a can of Coca-Cola: 4 → 3 left">
+  <img src="docs/screenshots/wall-pkg.png" width="32%" alt="Wall scanner after taking out a home-made package of beef mince, with its packed and use-by dates">
+</p>
+
+The phone app: Pantry stock, the Garage, one box, the shopping list, packing and labelling home-made food.
+
+<p>
+  <img src="docs/screenshots/phone-stock.png" width="19%" alt="Pantry stock with to-buy, use-soon and to-name tiles">
+  <img src="docs/screenshots/phone-garage.png" width="19%" alt="Garage with numbered boxes on shelves and a lent-out jigsaw">
+  <img src="docs/screenshots/phone-box.png" width="19%" alt="Box A·2 Plumbing and the spare parts in it">
+  <img src="docs/screenshots/phone-shopping.png" width="19%" alt="Groceries shopping list">
+  <img src="docs/screenshots/phone-pack.png" width="19%" alt="Pack and label form with a label preview">
+</p>
+
 ## Run
 
 ```bash
