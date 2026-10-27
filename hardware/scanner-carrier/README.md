@@ -8,8 +8,6 @@ adds what the wall scanner was missing:
   A GM65/GM861 still fits on the 4-pin **GM65** socket instead (fit only one scanner).
 - **Buzzer** (MLT-8530, driven from 5 V): beeps you can hear through a case.
 - **Status LED** (WS2812B): green taken out, blue put away, amber new barcode, red problem.
-- **Presence radar** (HLK-LD2410C on a Dupont cable): the screen wakes as you walk up,
-  through the plastic.
 
 ![Top](fab/render-top.png)
 
@@ -34,10 +32,10 @@ place parts, nets and positions are written down. See [Rebuilding](#rebuilding).
 2. Turn on **PCB Assembly**, top side, and upload `bom-jlcpcb.csv` and `cpl-jlcpcb.csv`.
 3. **Check the placement preview.** KiCad and JLCPCB don't always agree on which
    way a part faces; the ones worth a look are U1 (SOT-223), U2 (SOT-23-5), D2 (the
-   LED: its marked corner must land on the pad KiCad marks as pin 1), the four 1.25 mm
+   LED: its marked corner must land on the pad KiCad marks as pin 1), the three 1.25 mm
    sockets (openings toward the board edge) and LS1 (`+` corner top left). Rotate any that are off right there.
-4. The 1×6 socket (J3) and the radar header (J5) are through-hole: let JLCPCB fit
-   them, or untick them and solder them yourself (a minute each).
+4. The 1×6 socket (J3) is through-hole: let JLCPCB fit it, or untick it and solder
+   it yourself (a minute).
 
 ## Assembly
 
@@ -46,30 +44,25 @@ place parts, nets and positions are written down. See [Rebuilding](#rebuilding).
   carrier's). One **M3 × 11 mm standoff** in H1 holds its far corner; the socket plus
   header make about 11 mm. (Its second hole sits too close to the header pins for a
   standoff to fit beside the socket, and the header holds that corner anyway.)
-- **Radar:** a 5-wire Dupont cable from J5 to the LD2410C. Match the names on both
-  silkscreens (5V, GND, OUT, TX, RX), not the positions. Point it out of the case.
 - **Case:** M3 holes H3/H4, plus the scanner standoff. The scanner, LED and buzzer
   all face away from the carrier, so mount it with that side toward the outside.
 
 ## Wiring to the Sunton
 
-Three 4-pin 1.25 mm cables (the "MX1.25" ones that come with the Sunton boards):
+Two 4-pin 1.25 mm cables (the "MX1.25" ones that come with the Sunton boards):
 
 | Carrier | Sunton | Carries |
 |---|---|---|
 | **J1 P1 UART** | P1 (GND, RX, TX, 5V) | power for the whole carrier, scanner UART |
 | **J2 P4 IO** | P4 (IO18, IO17, 3V3, GND) | buzzer (IO18), status LED (IO17); the Sunton's 3.3 V is not used |
-| **J6 P2 IO** | P2 (IO13, IO12, IO11, IO19) | radar: OUT → IO12, TX → IO13, RX ← IO11; IO19 (touch) is not connected |
 
 > **Before you power it up:** the carrier's pins are in the same order as the
 > Sunton's silkscreen, assuming a straight 1:1 cable. Some MX1.25 cables are
 > reversed. Check with a multimeter that Sunton GND reaches carrier GND on J1;
 > a reversed J1 puts 5 V on ground.
 
-IO11–13 are the Sunton's SD card pins: **leave its SD slot empty**.
-
-Power is the Sunton's USB-C. The carrier adds up to roughly 0.5 A (scanner and
-radar most of it), so use a 2 A supply.
+Power is the Sunton's USB-C. The carrier adds up to roughly 0.4 A (the scanner most
+of it), so use a 2 A supply.
 
 ## Firmware
 
@@ -82,10 +75,9 @@ packages:
   ui: !include pantry-ui.yaml
 ```
 
-[pantry-carrier.yaml](../../esphome/pantry-carrier.yaml) adds the buzzer (`rtttl`),
-the LED (`Status LED` in Home Assistant), the radar (`Presence`, plus the LD2410's
-tuning entities) and wakes the screen on presence. The UI calls its `feedback`
-script after every scan.
+[pantry-carrier.yaml](../../esphome/pantry-carrier.yaml) adds the buzzer (`rtttl`) and
+the LED (`Status LED` in Home Assistant). The UI calls its `feedback` script after
+every scan.
 
 **Set up the DE2120** once with the configuration barcodes in its settings manual:
 TTL/UART output, **9600 baud**, **CR suffix**, and a scan mode that suits you
@@ -121,5 +113,3 @@ generator would overwrite your changes, so pick one way.
 - The **MLT-8530 footprint** is drawn from the datasheet's outline (it gives no land
   pattern); JLCPCB's own footprint may differ slightly.
 - The **DE2120's default baud rate**: set it as above rather than trusting a default.
-- The radar's UART is wired and configured but only its OUT pin is needed for waking;
-  the UART is for tuning.

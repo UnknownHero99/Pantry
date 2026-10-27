@@ -4,12 +4,10 @@ Pantry scanner carrier: the one place the circuit is described.
 make_sch.py turns this into the KiCad schematic, make_pcb.py places the
 footprints from it. Change parts, nets or positions here and rerun build.sh.
 
-The board sits behind the Sunton ESP32-8048S043C and talks to it over three of
+The board sits behind the Sunton ESP32-8048S043C and talks to it over two of
 its 4-pin 1.25 mm headers:
   P1  GND, RX(44), TX(43), +5V   scanner UART + all power for this board
   P4  IO18, IO17, +3.3V, GND     buzzer, status LED (Sunton 3.3 V left unused)
-  P2  IO13, IO12, IO11, IO19     radar UART + presence (IO19 is touch SDA: unused)
-GPIO11-13 are the Sunton's SD card pins, so leave its SD slot empty.
 
 The SparkFun 2D Barcode Scanner Breakout (DE2120, red aiming line) plugs into a
 1x6 socket and one M3 standoff (its other hole is too close to the header for
@@ -41,10 +39,6 @@ PARTS = {
 		footprint='Connector_Molex:Molex_PicoBlade_53261-0471_1x04-1MP_P1.25mm_Horizontal', lcsc='C696092',
 		pins={'1': 'BUZZ', '2': 'LED_3V3', '4': 'GND'},
 		labels=['IO18', 'IO17', '3V3', 'GND'], at=(22.5, 41.2, 0), sch=(30, 85)),
-	'J6': dict(symbol='Connector_Generic:Conn_01x04', value='Sunton P2 IO',
-		footprint='Connector_Molex:Molex_PicoBlade_53261-0471_1x04-1MP_P1.25mm_Horizontal', lcsc='C696092',
-		pins={'1': 'IO13_RXD', '2': 'IO12_PRESENCE', '3': 'IO11_TXD'},
-		labels=['IO13', 'IO12', 'IO11', 'IO19'], at=(36.0, 41.2, 0), sch=(30, 130)),
 	'J4': dict(symbol='Connector_Generic:Conn_01x04', value='GM65 scanner',
 		footprint='Connector_Molex:Molex_PicoBlade_53261-0471_1x04-1MP_P1.25mm_Horizontal', lcsc='C696092',
 		pins={'1': 'GND', '2': '+5V', '3': 'SCAN_TX', '4': 'SCAN_RX'},
@@ -116,17 +110,6 @@ PARTS = {
 	'R2': dict(symbol='Device:R', value='100k', footprint='Resistor_SMD:R_0603_1608Metric', lcsc='C25803',
 		pins={'1': 'BUZZ_G', '2': 'GND'}, at=(35.5, 21.5, 90), sch=(130, 180)),
 
-	# ── presence: HLK-LD2410C radar on a 1x5 header (Dupont cable) ────────
-	'J5': dict(symbol='Connector_Generic:Conn_01x05', value='LD2410C radar',
-		footprint='Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical', lcsc='C492404',
-		pins={'1': '+5V', '2': 'GND', '3': 'RADAR_OUT', '4': 'RADAR_TX', '5': 'RADAR_RX'},
-		labels=['5V', 'GND', 'OUT', 'TX', 'RX'], at=(59.5, 9.0, 0), sch=(250, 145)),
-	'R5': dict(symbol='Device:R', value='1k', footprint='Resistor_SMD:R_0603_1608Metric', lcsc='C21190',
-		pins={'1': 'RADAR_OUT', '2': 'IO12_PRESENCE'}, at=(55.0, 10.5, 0), sch=(195, 145)),
-	'R6': dict(symbol='Device:R', value='1k', footprint='Resistor_SMD:R_0603_1608Metric', lcsc='C21190',
-		pins={'1': 'RADAR_TX', '2': 'IO13_RXD'}, at=(55.0, 13.0, 0), sch=(210, 145)),
-	'R7': dict(symbol='Device:R', value='1k', footprint='Resistor_SMD:R_0603_1608Metric', lcsc='C21190',
-		pins={'1': 'IO11_TXD', '2': 'RADAR_RX'}, at=(55.0, 15.5, 0), sch=(225, 145)),
 }
 
 # Power flags: these nets come in on a connector, so tell ERC they're driven.
@@ -139,5 +122,4 @@ NOTES = [
 	(215, 18, 'SparkFun 2D Barcode Scanner Breakout (DE2120, red aiming line).\nPlugs in on top; M3 x 11 mm standoff in H1.\nGM65 instead: J4. Fit only one scanner.'),
 	(95, 78, 'Status LED: WS2812B, data shifted 3.3 V -> 5 V (IO17).'),
 	(95, 125, 'Buzzer: MLT-8530 from 5 V, PWM on IO18 (ESPHome rtttl).'),
-	(185, 112, 'Radar: HLK-LD2410C on a Dupont cable. OUT -> IO12,\nUART on IO13 (RX) / IO11 (TX), 256000 baud.\nIO11-13 are the Sunton SD pins: leave the SD slot empty.'),
 ]

@@ -13,7 +13,7 @@ where every part is). In KiCad terms the top side is the back of the unit.
   scanner:   UART0 (IO43/IO44, free now that USB does the flashing):
              SparkFun 2D Barcode Scanner (DE2120, red line) on a 1x6 socket,
              or any 5 V UART module (GM65, GM805, GM861) on the 4-pin socket
-  buzzer IO2, side-view status LED IO1 (shines down out of the case), radar OUT IO4
+  buzzer IO2, side-view status LED IO1 (shines down out of the case)
 
 make_sch.py turns this into the schematic, make_pcb.py places it, route.py routes it.
 """
@@ -36,11 +36,11 @@ SF_GND_X, SF_ROW_Y = 10.0, 47.0
 # order they meet the module's edge seen from the ribbon connector below it (left
 # side top to bottom, bottom row left to right, right side bottom to top): the
 # 20 display lines reach the connector without crossing. Touch sits on the right
-# side (toward its ribbon), buzzer and LED top right, radar and backlight top left.
+# side (toward its ribbon), buzzer and LED top right, backlight top left. IO4 is free.
 ESP_PINS = {
 	'GND': 'GND', '3V3': '+3V3', 'EN': 'EN', 'IO0': 'BOOT',
 	'USB_D-': 'USB_DN', 'USB_D+': 'USB_DP', 'RXD0': 'SCAN_TX', 'TXD0': 'SCAN_RX',
-	'IO4': 'PRESENCE', 'IO5': 'BL_PWM',
+	'IO5': 'BL_PWM',
 	'IO6': 'R3', 'IO7': 'R4', 'IO15': 'R5', 'IO16': 'R6', 'IO17': 'R7',
 	'IO18': 'G2', 'IO8': 'G3', 'IO3': 'G4', 'IO46': 'G5', 'IO9': 'G6', 'IO10': 'G7',
 	'IO11': 'B3', 'IO12': 'B4', 'IO13': 'B5', 'IO14': 'B6', 'IO21': 'B7',
@@ -158,12 +158,6 @@ PARTS = {
 		pins={'1': 'GND', '2': 'LED_DIN', '3': '+5V'}, at=(90.0, 57.0, 0), sch=(165, 200)),
 	'C11': part(C(*C100N), {'1': '+5V', '2': 'GND'}, (85.5, 52.0, 90), (185, 205)),
 
-	# ── presence radar (HLK-LD2410C) on a 3-pin cable ─────────────────────
-	'J6': dict(symbol='Connector_Generic:Conn_01x03', value='LD2410C radar',
-		footprint='Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical', lcsc='C2937625',
-		pins={'1': '+5V', '2': 'GND', '3': 'RADAR_OUT'}, labels=['5V', 'GND', 'OUT'], at=(10.0, 7.0, 0), sch=(30, 85)),
-	'R20': part(R('1k', 'C21190'), {'1': 'RADAR_OUT', '2': 'PRESENCE'}, (13.5, 9.5, 90), (55, 85)),
-
 	# ── mounting: M3 at the corners ───────────────────────────────────────
 	**{f'H{i + 1}': dict(symbol='Mechanical:MountingHole', value='M3', footprint='MountingHole:MountingHole_3.2mm_M3',
 		lcsc=None, pins={}, at=(x, y, 0), sch=(200 + 15 * i, 190))
@@ -206,6 +200,7 @@ for _i, _pin in enumerate(_signal_pins):
 
 # Top-layer strips the router leaves to the ground pour: behind the two ribbon
 # connectors, where the pour reaches their fine-pitch ground pins from behind.
+POUR_FED = ['J2']          # parts whose fine-pitch ground pins get no via of their own
 KEEP_CLEAR = [('F', 37.0, 53.45, 63.0, 59.4), ('F', 68.0, 52.15, 82.0, 59.4)]
 
 POWER_FLAGS = {'+5V': (60, 25), 'GND': (75, 25), '+3V3': (90, 25)}
@@ -220,5 +215,4 @@ NOTES = [
 	(15, 108, 'Scanner on UART0: SparkFun 2D Barcode Scanner (3.3 V)\nor a 5 V UART module on J5. Fit only one.'),
 	(15, 190, 'Buzzer: MLT-8530 from 5 V, PWM on IO2.'),
 	(95, 190, 'Status LED: side-view SK6812 on the bottom edge, data 3.3 V -> 5 V.'),
-	(15, 75, 'Radar: HLK-LD2410C OUT -> IO4 (wakes the screen).'),
 ]

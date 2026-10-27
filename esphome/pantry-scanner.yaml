@@ -24,7 +24,7 @@ esphome:
   friendly_name: Pantry scanner
 
 # The screens and everything they do; shared with pantry-sim.yaml.
-# With the carrier board (hardware/scanner-carrier: buzzer, status LED, radar),
+# With the carrier board (hardware/scanner-carrier: buzzer, status LED),
 # uncomment carrier.
 packages:
   # carrier: !include pantry-carrier.yaml
@@ -70,7 +70,6 @@ time:
 # ── hardware ────────────────────────────────────────────────────────────
 
 uart:
-  # A list, so pantry-carrier.yaml can add the radar UART next to it.
   - id: scanner_uart
     tx_pin: GPIO43
     rx_pin: GPIO44

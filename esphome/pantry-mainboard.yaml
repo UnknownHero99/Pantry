@@ -1,6 +1,6 @@
 # Pantry wall scanner on its own mainboard (hardware/mainboard): ESP32-S3-WROOM-1
 # N16R8 behind a bare 4.3" 800x480 RGB panel with GT911 touch, plus scanner,
-# buzzer, side-view status LED and presence radar on the same board.
+# buzzer and side-view status LED on the same board.
 #
 # Differences from the Sunton build (pantry-scanner.yaml):
 #   - USB-C is the ESP32-S3's native USB: flashing and logs go there, so the
@@ -9,7 +9,7 @@
 #     (that's what lets the board route without a tangle), so the pins below
 #     differ from the Sunton's; the timing is the same panel's
 #   - touch on IO39 (SDA) / IO40 (SCL) / IO41 (INT) / IO42 (RST)
-#   - backlight IO5, buzzer IO2, SK6812 status LED IO1, radar OUT IO4
+#   - backlight IO5, buzzer IO2, SK6812 status LED IO1
 #
 # Scanner: SparkFun 2D Barcode Scanner (DE2120) on J4, or any 5 V UART module
 # (GM65, GM805, GM861) on J5. Set it to 9600 baud with a CR suffix.
@@ -24,11 +24,11 @@ esphome:
   name: ${name}
   friendly_name: Pantry scanner
 
-# The screens (shared with pantry-sim.yaml) and the buzzer / LED / radar.
+# The screens (shared with pantry-sim.yaml) and the buzzer / LED.
 packages:
   feedback: !include
     file: pantry-feedback.yaml
-    vars: { buzzer_pin: GPIO2, led_pin: GPIO1, led_chipset: SK6812, presence_pin: GPIO4 }
+    vars: { buzzer_pin: GPIO2, led_pin: GPIO1, led_chipset: SK6812 }
   ui: !include pantry-ui.yaml
 
 esp32:

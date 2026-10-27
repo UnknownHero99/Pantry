@@ -15,7 +15,7 @@ from pathlib import Path
 import pcbnew as k
 
 sys.path.insert(0, str(Path(__file__).parent))
-from design import NAME, FINE, POWER, PLANES, PREROUTES, PREVIAS, KEEP_CLEAR
+from design import NAME, FINE, POWER, PLANES, PREROUTES, PREVIAS, KEEP_CLEAR, POUR_FED
 
 PCB = Path(__file__).parent.parent / f'{NAME}.kicad_pcb'
 G = 0.125                     # grid pitch, mm (a quarter of the 0.5 mm ribbon pitch)
@@ -372,8 +372,8 @@ def fanout(net):
 		if 1 in layers or pad is None:
 			continue      # through-hole (the inner plane reaches it) or fixed copper from design.py
 		narrow = s[0] == 'rect' and min(s[3], s[4]) < 0.45
-		if narrow and net == '/GND':
-			continue      # fine-pitch ground pins: the top ground pour reaches them from behind
+		if narrow and net == '/GND' and pad.GetParentFootprint().GetReference() in POUR_FED:
+			continue      # the ribbon connector's ground pins: the pour behind it reaches them
 		if narrow and fine_m is None:
 			fine_m, _ = blocked_for(net, 0.075)
 		mm_ = fine_m if narrow else m

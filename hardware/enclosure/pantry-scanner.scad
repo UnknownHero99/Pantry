@@ -13,7 +13,7 @@
 //
 // Frame: X right (seen from the front), Y up, Z out of the wall. The back is z = 0.
 
-part = "assembly";            // shell | back | assembly | v_shell | v_back | v_panel | v_pcb | v_scanner | v_radar
+part = "assembly";            // shell | back | assembly | v_shell | v_back | v_panel | v_pcb | v_scanner
 
 /* [Panel: 4.3" 800x480 RGB TFT with capacitive touch] */
 panel_w = 105.5;              // outline of the cover glass
@@ -25,7 +25,7 @@ lip = 2.5;                    // how far the bezel covers the glass edge
 tilt = 15;                    // screen face, degrees back from vertical
 mouth_angle = 45;             // where the scanner looks: degrees forward of straight down
 top_margin = 12;              // face above the panel
-chin = 19;                    // face below the panel (radar behind it, arrow on it)
+chin = 15;                    // face below the panel, with the arrow
 mouth_len = 34;               // the bevelled face the scanner looks through
 depth_top = 24;               // depth at the top of the screen face
 wall = 2.2;
@@ -44,10 +44,6 @@ pcb_holes = [[3.5, 3.5], [96.5, 3.5], [3.5, 56.5], [96.5, 56.5]];
 sf_w = 44.45; sf_d = 25.4;
 module_h = 12.5;              // the DE2120 module's height above the SparkFun board
 scan_win = [32, 24];          // window in the mouth, across by along
-
-/* [Radar: HLK-LD2410C behind the chin] */
-radar = [22, 16];
-radar_u = 20;                 // its left edge, from the centre line
 
 $fn = 40;
 
@@ -105,9 +101,6 @@ module shell() {
 		union() {
 			difference() { outer(); cavity(); }
 			bosses();
-			// radar: two rails on the inside of the chin it slides between
-			in_face() for (du = [-1.6, radar[0] + 0.2])
-				translate([radar_u + du, top_margin + panel_h + 1.5, wall]) cube([1.4, chin - 2.5, 5]);
 			// scanner: pegs with pins for the SparkFun board's two holes. Mounted this way
 			// round, it lies on top of them (the module hangs toward the window).
 			in_mouth() {
@@ -202,7 +195,6 @@ module scanner() in_mouth() {
 	translate([-0.73 * sf_w, m0, wall + module_h + 0.5]) cube([sf_w, sf_d, pcb_t]);
 	translate([-11, mouth_len / 2 - 10.75, wall + 0.5]) cube([22, 21.5, module_h]);
 }
-module radar_board() in_face() translate([radar_u, top_margin + panel_h + 2, wall]) cube([radar[0], radar[1], 1.6]);
 
 explode = 30;
 
@@ -213,11 +205,10 @@ else if (part == "back") translate([0, 0, back_t]) back();  // outside face down
 else if (part == "assembly") rotate([90, 0, 0]) {
 	shell();
 	translate([0, 0, -explode]) back();
-	panel(); pcb(); scanner(); radar_board();
+	panel(); pcb(); scanner();
 }
 if (part == "v_shell") rotate([90, 0, 0]) shell();
 if (part == "v_back") rotate([90, 0, 0]) back();
 if (part == "v_panel") rotate([90, 0, 0]) panel();
 if (part == "v_pcb") rotate([90, 0, 0]) pcb();
 if (part == "v_scanner") rotate([90, 0, 0]) scanner();
-if (part == "v_radar") rotate([90, 0, 0]) radar_board();

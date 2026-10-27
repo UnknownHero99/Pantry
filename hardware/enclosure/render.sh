@@ -8,11 +8,11 @@ run openscad -D 'part="shell"' -o stl/pantry-scanner-shell.stl pantry-scanner.sc
 run openscad -D 'part="back"' -o stl/pantry-scanner-back.stl pantry-scanner.scad
 
 # Pictures: each piece as a mesh in place, then a scene that only imports and colours them.
-for p in shell back panel pcb scanner radar; do run openscad -D "part=\"v_$p\"" -D '$fn=40' -o build/$p.stl pantry-scanner.scad; done
+for p in shell back panel pcb scanner; do run openscad -D "part=\"v_$p\"" -D '$fn=40' -o build/$p.stl pantry-scanner.scad; done
 view() {  # name, eye, centre, extra
 	python3 render.py "renders/$1.png" eye=$2 at=$3 $4 \
 		build/shell.stl:#e8e4dc build/back.stl:#c9c4ba build/panel.stl:#1b1d22 \
-		build/pcb.stl:#1f6b3a build/scanner.stl:#c0392b build/radar.stl:#2e5cb8
+		build/pcb.stl:#1f6b3a build/scanner.stl:#c0392b
 }
 view front 140,-260,120 0,-30,70 "" &
 view side 260,-120,90 0,-30,70 "" &

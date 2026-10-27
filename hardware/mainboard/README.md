@@ -24,8 +24,8 @@ is on the back, so JLCPCB assembles one side only. Goes into the
     right-angle header plugs it straight in.
   - **J5**: any 5 V UART module (GM65, GM805, GM861…) on a 4-pin 1.25 mm cable instead.
   Fit only one.
-- **Buzzer** MLT-8530 (IO2), **status LED** side-view SK6812 on the bottom edge shining
-  down (IO1, level-shifted to 5 V), **radar** HLK-LD2410C on a 3-pin cable (OUT → IO4).
+- **Buzzer** MLT-8530 (IO2) and a **status LED**: side-view SK6812 on the bottom edge
+  shining down (IO1, level-shifted to 5 V).
 - **RESET** and **BOOT** buttons (rarely needed: USB flashing doesn't need them).
 
 ## Files
@@ -44,7 +44,7 @@ is on the back, so JLCPCB assembles one side only. Goes into the
 2. PCB Assembly, top side, upload the BOM and CPL.
 3. Check the placement preview, especially U2/U4 (SOT-23-5), U5 (SC-70-5), the two ribbon
    connectors, D3 (side LED, light toward the bottom edge) and LS1 (`+` top left).
-4. J4 (1×6 socket) and J6 (radar header) are through-hole: let JLCPCB fit them or solder them.
+4. J4 (1×6 socket) is through-hole: let JLCPCB fit it or solder it.
 
 ## Panel
 
@@ -57,7 +57,7 @@ the connectors on the back.
 ## Firmware
 
 [esphome/pantry-mainboard.yaml](../../esphome/pantry-mainboard.yaml): the same screens
-(`pantry-ui.yaml`) and the buzzer / LED / radar package (`pantry-feedback.yaml`) as the
+(`pantry-ui.yaml`) and the buzzer / LED package (`pantry-feedback.yaml`) as the
 Sunton build with the carrier, on this board's pins (the display block lists this board's
 RGB GPIOs; the panel timing is unchanged). Flash it over USB-C the first time, over Wi-Fi
 after that.
