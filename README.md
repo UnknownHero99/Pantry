@@ -158,6 +158,12 @@ PCB behind the display with the SparkFun 2D Barcode Scanner (red aiming line), a
 status LED and a radar that wakes the screen as you walk up. Gerbers and JLCPCB assembly
 files are in its `fab/` folder; enable it in the firmware with the `carrier` package.
 
+**Or everything on one board** ([hardware/mainboard](hardware/mainboard)): replaces the
+Sunton. ESP32-S3 module, native USB-C, the bare 4.3" panel's ribbons, backlight driver,
+scanner, buzzer, status LED and radar on one 4-layer board, with its own firmware
+([esphome/pantry-mainboard.yaml](esphome/pantry-mainboard.yaml)) and a
+[3D-printable enclosure](hardware/enclosure).
+
 ### Wiring
 
 Board's 4-pin **UART** connector → scanner:

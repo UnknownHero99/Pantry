@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "Pantry") (type "KiCad") (uri "${KIPRJMOD}/lib/Pantry.kicad_sym") (options "") (descr "Parts not in the KiCad library"))
+)
