@@ -154,7 +154,7 @@ def place(netlist, dsn):
 	r = shape(board, k.SHAPE_T_RECTANGLE, k.F_Fab, 0.1)
 	r.SetStart(pt(SF_X, SF_Y))
 	r.SetEnd(pt(SF_X + SF_W, SF_Y + SF_H))
-	text(board, 'SparkFun 2D Barcode Scanner (on 11 mm standoffs)', SF_X + SF_W / 2, SF_Y + SF_H / 2, layer=k.F_Fab, size=1.0)
+	text(board, 'SparkFun 2D Barcode Scanner (11 mm standoff in H1)', SF_X + SF_W / 2, SF_Y + SF_H / 2, layer=k.F_Fab, size=1.0)
 	text(board, 'PANTRY SCANNER CARRIER rev 1', BOARD_W / 2, 3.0, layer=k.B_SilkS, size=1.2)
 	text(board, 'Sunton cables: check pin 1 to pin 1 before power-up', BOARD_W / 2, 5.2, layer=k.B_SilkS, size=0.8)
 

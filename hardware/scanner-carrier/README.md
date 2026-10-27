@@ -4,7 +4,7 @@ A 64 × 44 mm two-layer board that sits behind the Sunton ESP32-8048S043C and
 adds what the wall scanner was missing:
 
 - **SparkFun 2D Barcode Scanner Breakout** (DyScan DE2120): the red aiming line,
-  reads EAN/UPC *and* the QR labels. It plugs into a 1×6 socket and two M3 standoffs.
+  reads EAN/UPC *and* the QR labels. It plugs into a 1×6 socket and an M3 standoff.
   A GM65/GM861 still fits on the 4-pin **GM65** socket instead (fit only one scanner).
 - **Buzzer** (MLT-8530, driven from 5 V): beeps you can hear through a case.
 - **Status LED** (WS2812B): green taken out, blue put away, amber new barcode, red problem.
@@ -43,11 +43,12 @@ place parts, nets and positions are written down. See [Rebuilding](#rebuilding).
 
 - **Scanner:** solder a straight 1×6 male header to the SparkFun board, pins down.
   It plugs into J3 with **GND on the left** (the SparkFun silkscreen matches the
-  carrier's). Two **M3 × 11 mm standoffs** in H1/H2 hold its other end; the socket
-  plus header make about 11 mm.
+  carrier's). One **M3 × 11 mm standoff** in H1 holds its far corner; the socket plus
+  header make about 11 mm. (Its second hole sits too close to the header pins for a
+  standoff to fit beside the socket, and the header holds that corner anyway.)
 - **Radar:** a 5-wire Dupont cable from J5 to the LD2410C. Match the names on both
   silkscreens (5V, GND, OUT, TX, RX), not the positions. Point it out of the case.
-- **Case:** M3 holes H3/H4, plus the scanner standoffs. The scanner, LED and buzzer
+- **Case:** M3 holes H3/H4, plus the scanner standoff. The scanner, LED and buzzer
   all face away from the carrier, so mount it with that side toward the outside.
 
 ## Wiring to the Sunton

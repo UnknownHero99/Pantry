@@ -19,7 +19,7 @@ tools/kicad.sh "
 	python3 tools/route.py
 	kicad-cli pcb drc --schematic-parity --severity-all -o build/drc.rpt scanner-carrier.kicad_pcb >/dev/null || true
 	grep -E '^\*\* Found' build/drc.rpt
-" 2>&1 | grep -v ': Debug: '
+" 2>&1 | grep --line-buffered -v ': Debug: '
 
 # Fab files: Gerbers + drill (zip for JLCPCB), assembly BOM/CPL, schematic PDF, STEP, renders.
 rm -rf fab && mkdir -p fab/gerbers
@@ -35,6 +35,6 @@ tools/kicad.sh "
 	kicad-cli pcb export step --subst-models --force -o fab/scanner-carrier.step scanner-carrier.kicad_pcb >/dev/null
 	kicad-cli pcb render --side top --width 1600 --height 1100 --quality high --floor -o fab/render-top.png scanner-carrier.kicad_pcb >/dev/null
 	kicad-cli pcb render --side bottom --width 1600 --height 1100 --quality high --floor -o fab/render-bottom.png scanner-carrier.kicad_pcb >/dev/null
-" 2>&1 | grep -v ': Debug: '
+" 2>&1 | grep --line-buffered -v ': Debug: '
 (cd fab/gerbers && zip -q -r ../scanner-carrier-gerbers.zip .)
 ls fab

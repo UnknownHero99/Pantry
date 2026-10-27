@@ -12,7 +12,8 @@ its 4-pin 1.25 mm headers:
 GPIO11-13 are the Sunton's SD card pins, so leave its SD slot empty.
 
 The SparkFun 2D Barcode Scanner Breakout (DE2120, red aiming line) plugs into a
-1x6 socket and two M3 standoffs, stacked over the low parts. A GM65/GM861 can
+1x6 socket and one M3 standoff (its other hole is too close to the header for
+one), stacked over the low parts. A GM65/GM861 can
 use the 4-pin "GM65" socket instead (same UART); fit only one scanner.
 """
 
@@ -59,15 +60,12 @@ PARTS = {
 	'H1': dict(symbol='Mechanical:MountingHole', value='M3 standoff (scanner)',
 		footprint='MountingHole:MountingHole_3.2mm_M3', lcsc=None, pins={},
 		at=(SF_X + 0.1 * IN, SF_Y + 0.1 * IN, 0), sch=(220, 185)),
-	'H2': dict(symbol='Mechanical:MountingHole', value='M3 standoff (scanner)',
-		footprint='MountingHole:MountingHole_3.2mm_M3', lcsc=None, pins={},
-		at=(SF_X + 0.1 * IN, SF_Y + 0.9 * IN, 0), sch=(235, 185)),
 	'H3': dict(symbol='Mechanical:MountingHole', value='M3 (case)',
 		footprint='MountingHole:MountingHole_3.2mm_M3', lcsc=None, pins={},
 		at=(60.5, 3.5, 0), sch=(250, 185)),
 	'H4': dict(symbol='Mechanical:MountingHole', value='M3 (case)',
 		footprint='MountingHole:MountingHole_3.2mm_M3', lcsc=None, pins={},
-		at=(60.5, 29.5, 0), sch=(265, 185)),
+		at=(60.5, 40.5, 0), sch=(265, 185)),
 	'TP1': dict(symbol='Connector:TestPoint', value='TRIG',
 		footprint='TestPoint:TestPoint_Pad_D1.0mm', lcsc=None, pins={'1': 'SCAN_TRIG'},
 		at=(25.0, 30.0, 0), sch=(270, 45)),
@@ -104,13 +102,13 @@ PARTS = {
 		pins={'1': '+5V', '2': 'GND'}, at=(50.5, 31.0, 90), sch=(190, 95)),
 	'TP3': dict(symbol='Connector:TestPoint', value='LED_DOUT',
 		footprint='TestPoint:TestPoint_Pad_D1.0mm', lcsc=None, pins={'1': 'LED_DOUT'},
-		at=(58.5, 36.0, 0), sch=(200, 85)),
+		at=(59.8, 33.5, 0), sch=(200, 85)),
 
 	# ── buzzer: MLT-8530 from 5 V, low-side MOSFET, PWM from IO18 ─────────
 	'LS1': dict(symbol='Device:Buzzer', value='MLT-8530', footprint='Pantry:Buzzer_MLT-8530', lcsc='C94599',
-		pins={'1': '+5V', '2': 'BUZZ_SW'}, at=(53.0, 23.5, 0), sch=(150, 140)),
+		pins={'1': '+5V', '2': 'BUZZ_SW'}, at=(52.0, 24.5, 0), sch=(150, 140)),
 	'D1': dict(symbol='Diode:1N4148W', value='1N4148W', footprint='Diode_SMD:D_SOD-123', lcsc='C81598',
-		pins={'1': '+5V', '2': 'BUZZ_SW'}, at=(47.5, 16.5, 90), sch=(170, 140)),
+		pins={'1': '+5V', '2': 'BUZZ_SW'}, at=(46.0, 16.0, 90), sch=(170, 140)),
 	'Q1': dict(symbol='Transistor_FET:AO3400A', value='AO3400A', footprint='Package_TO_SOT_SMD:SOT-23', lcsc='C20917',
 		pins={'1': 'BUZZ_G', '2': 'GND', '3': 'BUZZ_SW'}, at=(41.5, 22.0, 0), sch=(145, 165)),
 	'R1': dict(symbol='Device:R', value='100', footprint='Resistor_SMD:R_0603_1608Metric', lcsc='C22775',
@@ -138,7 +136,7 @@ POWER_FLAGS = {'+5V': (60, 25), 'GND': (75, 25)}
 NOTES = [
 	(20, 18, 'Sunton ESP32-8048S043C connectors (1.25 mm, 1:1 cables).\nCheck the cable maps pin 1 to pin 1 before power-up.'),
 	(95, 18, '3.3 V for the scanner: the SparkFun header takes 3.3 V, not 5 V.'),
-	(215, 18, 'SparkFun 2D Barcode Scanner Breakout (DE2120, red aiming line).\nPlugs in on top; M3 x 11 mm standoffs in H1/H2.\nGM65 instead: J4. Fit only one scanner.'),
+	(215, 18, 'SparkFun 2D Barcode Scanner Breakout (DE2120, red aiming line).\nPlugs in on top; M3 x 11 mm standoff in H1.\nGM65 instead: J4. Fit only one scanner.'),
 	(95, 78, 'Status LED: WS2812B, data shifted 3.3 V -> 5 V (IO17).'),
 	(95, 125, 'Buzzer: MLT-8530 from 5 V, PWM on IO18 (ESPHome rtttl).'),
 	(185, 112, 'Radar: HLK-LD2410C on a Dupont cable. OUT -> IO12,\nUART on IO13 (RX) / IO11 (TX), 256000 baud.\nIO11-13 are the Sunton SD pins: leave the SD slot empty.'),

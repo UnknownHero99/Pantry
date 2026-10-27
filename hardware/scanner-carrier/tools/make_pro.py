@@ -14,6 +14,8 @@ ds['rules'].update({
 ds['track_widths'] = [0.0, 0.25, 0.4, 0.5, 0.8]
 ds['via_dimensions'] = [{'diameter': 0.0, 'drill': 0.0}, {'diameter': 0.6, 'drill': 0.3}]
 ds['drc_exclusions'] = []
+# The demo project these defaults come from ignores these; parts must not overlap.
+ds['rule_severities'].update({'courtyards_overlap': 'error', 'missing_courtyard': 'warning'})
 
 ns = base['net_settings']
 default = dict(ns['classes'][0], clearance=0.2, track_width=0.25, via_diameter=0.6, via_drill=0.3)

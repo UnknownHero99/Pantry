@@ -1,0 +1,68 @@
+# Buzzer, status LED and presence for the wall scanner, on whichever board has
+# them: the scanner carrier (pantry-carrier.yaml) or the mainboard
+# (pantry-mainboard.yaml). Included with its pins as vars:
+#
+#   feedback: !include
+#     file: pantry-feedback.yaml
+#     vars: { buzzer_pin: GPIO18, led_pin: GPIO17, led_chipset: WS2812, presence_pin: GPIO12 }
+
+output:
+  - platform: ledc
+    id: buzzer_out
+    pin: ${buzzer_pin}
+
+rtttl:
+  output: buzzer_out
+  gain: 60%
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: status_led
+    name: Status LED
+    pin: ${led_pin}
+    num_leds: 1
+    chipset: ${led_chipset}
+    channel_colors: GRB
+    default_transition_length: 0s
+    restore_mode: ALWAYS_OFF
+
+# HLK-LD2410C OUT: someone's in front of the scanner, wake the screen.
+binary_sensor:
+  - platform: gpio
+    id: presence
+    name: Presence
+    pin: ${presence_pin}
+    device_class: occupancy
+    on_press:
+      - script.execute: wake
+
+script:
+  # What a scan sounds and looks like. Called by the UI with the result:
+  # out, in, undo, lookup, unknown, empty, box, error, offline.
+  - id: !extend feedback   # the UI's empty hook (pantry-ui.yaml)
+    mode: restart
+    then:
+      - lambda: |-
+          // r, g, b; amber while a new barcode is looked up or needs naming, red when it went wrong
+          float c[3] = {1, 0, 0};
+          if (kind == "out") { c[0] = 0; c[1] = 1; c[2] = 0.2; }
+          else if (kind == "in" || kind == "box") { c[0] = 0; c[1] = 0.45; c[2] = 1; }
+          else if (kind == "undo") { c[0] = 0.6; c[1] = 0.6; c[2] = 0.6; }
+          else if (kind == "lookup" || kind == "unknown") { c[0] = 1; c[1] = 0.5; c[2] = 0; }
+          auto call = id(status_led).turn_on();
+          call.set_brightness(0.6);
+          call.set_rgb(c[0], c[1], c[2]);
+          call.perform();
+      - if:
+          condition:
+            lambda: 'return kind != "lookup";'   # the lookup's real answer beeps a moment later
+          then:
+            - rtttl.play:
+                rtttl: !lambda |-
+                  if (kind == "out" || kind == "box") return std::string("out:d=32,o=6,b=180:e7");
+                  if (kind == "in") return std::string("in:d=32,o=6,b=180:c7,e7");
+                  if (kind == "undo") return std::string("undo:d=32,o=6,b=180:e7,c7");
+                  if (kind == "unknown") return std::string("new:d=16,o=6,b=160:a,e");
+                  return std::string("err:d=8,o=5,b=140:c,p,c");
+      - delay: !lambda 'return kind == "out" || kind == "in" || kind == "undo" || kind == "box" ? 1500 : 4000;'
+      - light.turn_off: status_led

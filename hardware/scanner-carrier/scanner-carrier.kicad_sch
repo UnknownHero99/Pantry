@@ -3471,67 +3471,6 @@
 	)
 	(symbol
 		(lib_id "Mechanical:MountingHole")
-		(at 236.22 185.42 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board yes)
-		(dnp no)
-		(uuid "936bf1e4-a4d9-5e1c-bb94-45c245b75890")
-		(property "Reference" "H2"
-			(at 236.22 180.34 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "M3 standoff (scanner)"
-			(at 236.22 182.245 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3"
-			(at 236.22 185.42 0)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 236.22 185.42 0)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Mounting Hole without connection"
-			(at 236.22 185.42 0)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(instances
-			(project "scanner-carrier"
-				(path "/1485f497-d9c3-5dfb-b6bd-ebc7ec208940"
-					(reference "H2")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Mechanical:MountingHole")
 		(at 248.92 185.42 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -6080,7 +6019,7 @@
 		)
 		(uuid "f6fb88cc-78a1-5a83-a96a-8f2cc624a5e0")
 	)
-	(text "SparkFun 2D Barcode Scanner Breakout (DE2120, red aiming line).\nPlugs in on top; M3 x 11 mm standoffs in H1/H2.\nGM65 instead: J4. Fit only one scanner."
+	(text "SparkFun 2D Barcode Scanner Breakout (DE2120, red aiming line).\nPlugs in on top; M3 x 11 mm standoff in H1.\nGM65 instead: J4. Fit only one scanner."
 		(exclude_from_sim no)
 		(at 215 18 0)
 		(effects
