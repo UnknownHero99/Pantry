@@ -1,13 +1,16 @@
 # Pantry wall scanner
 #   Sunton ESP32-8048S043C (ESP32-S3, 4.3" 800x480, GT911 capacitive touch)
-#   + GM65 / GM861 barcode module on the board's 4-pin UART connector.
+#   + a barcode scanner, a buzzer module and a WS2812 LED module on its two
+#     1.25 mm 4-pin connectors. No custom board needed.
 #
-# Wiring (UART JST 1.25 connector on the board → scanner TTL side):
-#   5V → VCC   GND → GND   TX(GPIO43) → scanner RX   RX(GPIO44) → scanner TX
-# GPIO43/44 is also the USB serial, so unplug the scanner for the very first
+# Wiring (Sunton connector → module):
+#   P1 (GND, RXD, TXD, 5V)       → scanner: GND, TX, RX; 5V for a GM65 / GM861
+#   P4 (GND, 3.3V, IO17, IO18)   → 3.3V for the SparkFun DE2120 scanner, the LED and
+#                                  the buzzer; IO17 → LED DIN, IO18 → buzzer I/O
+# GPIO43/44 (P1) is also the USB serial, so unplug the scanner for the very first
 # USB flash; after that, update over Wi-Fi (OTA).
 #
-# Scanner setup (scan the config barcodes in the GM65 manual once):
+# Scanner setup (scan the config barcodes in its manual once):
 #   UART output, 9600 baud, continuous/induction mode, add CR suffix.
 #
 # This file is the hardware; the screens live in pantry-ui.yaml (+ pantry_ui.h).
@@ -23,10 +26,13 @@ esphome:
   name: ${name}
   friendly_name: Pantry scanner
 
-# The screens and everything they do; shared with pantry-sim.yaml.
-# With the carrier board (hardware/scanner-carrier: buzzer, status LED),
-# uncomment carrier.
+# The buzzer and status LED, and the screens (shared with pantry-sim.yaml).
+# No buzzer or LED? Drop feedback. With the scanner carrier board
+# (hardware/scanner-carrier), replace feedback with carrier.
 packages:
+  feedback: !include
+    file: pantry-feedback.yaml
+    vars: { buzzer_pin: GPIO18, buzzer_inverted: "true", led_pin: GPIO17, led_chipset: WS2812 }
   # carrier: !include pantry-carrier.yaml
   ui: !include pantry-ui.yaml
 

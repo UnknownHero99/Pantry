@@ -147,35 +147,57 @@ Labels encode `PNTRY:I:000123`. The wall scanner and phone camera both read them
 
 ### Parts
 
+Everything is off the shelf; no custom board needed.
+
 | | |
 |---|---|
 | Sunton **ESP32-8048S043C** (ESP32-S3 N16R8, 4.3" 800×480, *capacitive* GT911 touch) | ~€28 |
-| **GM65** (or GM861S) barcode module, 1D + 2D, **TTL UART** (not the RS-232 variant) | ~€18 |
-| JST 1.25 mm 4-pin cable, 5 V 2 A USB-C supply, wall enclosure | |
+| Barcode scanner, **TTL UART**: the **SparkFun 2D Barcode Scanner Breakout** (DE2120, red aiming line; the [enclosure](hardware/enclosure) is made for it) or a **GM65** / GM861S (not the RS-232 variant) | |
+| **Passive buzzer module**, 3-pin (I/O, VCC, GND) with a transistor | ~€1 |
+| **WS2812B LED module**, a single LED (DIN, 5V/VCC, GND) | ~€1 |
+| Two 1.25 mm 4-pin cables (come with the Sunton), a few Dupont wires, 5 V 2 A USB-C supply | |
+| [3D-printed case](hardware/enclosure) (or any wall box) | |
 
-**Optional carrier board** ([hardware/scanner-carrier](hardware/scanner-carrier)): a small
-PCB behind the display with the SparkFun 2D Barcode Scanner (red aiming line), a buzzer
-and a status LED. Gerbers and JLCPCB assembly
-files are in its `fab/` folder; enable it in the firmware with the `carrier` package.
-
-**Or everything on one board** ([hardware/mainboard](hardware/mainboard)): replaces the
-Sunton. ESP32-S3 module, native USB-C, the bare 4.3" panel's ribbons, backlight driver,
-scanner, buzzer and status LED on one 4-layer board, with its own firmware
-([esphome/pantry-mainboard.yaml](esphome/pantry-mainboard.yaml)) and a
-[3D-printable enclosure](hardware/enclosure).
+The buzzer and LED are optional: without them, drop the `feedback` package from
+`pantry-scanner.yaml`.
 
 ### Wiring
 
-Board's 4-pin **UART** connector → scanner:
-`5V → VCC`, `GND → GND`, `TX (GPIO43) → scanner RX`, `RX (GPIO44) → scanner TX`.
+The Sunton has two 4-pin 1.25 mm connectors for all of it:
+
+| Sunton | Goes to |
+|---|---|
+| **P1** `GND` | scanner GND |
+| **P1** `RXD` (GPIO44) | scanner TX |
+| **P1** `TXD` (GPIO43) | scanner RX |
+| **P1** `5V` | GM65: VCC. The DE2120 runs on 3.3 V: leave this free. |
+| **P4** `GND` | LED GND, buzzer GND (and the scanner's, already on P1) |
+| **P4** `3.3V` | LED VCC, buzzer VCC, DE2120 3V3 |
+| **P4** `IO17` | LED DIN |
+| **P4** `IO18` | buzzer I/O |
+
+P4's 3.3 V and GND feed two or three modules: splice them (solder and heat-shrink, or a
+small lever connector). The LED runs on 3.3 V so its data input sees a full-level signal;
+WS2812B LEDs are rated from 3.5 V but work at 3.3 V.
+
+The buzzer module's transistor usually switches on when I/O is **low** (an 8550 / 9012
+PNP), which is what `buzzer_inverted: "true"` in `pantry-scanner.yaml` expects. If yours
+is silent or hisses when idle, set it to `"false"`.
 
 GPIO43/44 is also the board's USB serial, so **unplug the scanner for the very first USB
 flash**. After that, update over Wi-Fi.
 
+**Optional custom boards** for a tidier build, neither needed:
+[hardware/scanner-carrier](hardware/scanner-carrier) is a small PCB behind the Sunton
+with sockets for the scanner, a buzzer and a status LED (swap `feedback` for the `carrier`
+package); [hardware/mainboard](hardware/mainboard) replaces the Sunton with one 4-layer
+board for the bare panel ([esphome/pantry-mainboard.yaml](esphome/pantry-mainboard.yaml)).
+
 ### Scanner module setup
 
-Using the configuration barcodes in the GM65 manual: **serial (UART) output, 9600 baud,
-induction/continuous mode, add CR suffix**, and make sure QR codes are enabled.
+Using the configuration barcodes in the scanner's manual: **serial (UART) output, 9600
+baud, induction/continuous mode, add CR suffix**, and make sure QR codes are enabled.
+(Or keep its baud rate and change `scanner_baud` in `pantry-scanner.yaml`.)
 
 ### Flash
 

@@ -1,5 +1,6 @@
 # The scanner carrier board (hardware/scanner-carrier): buzzer and status LED
-# for the wall scanner. To use it, uncomment it in pantry-scanner.yaml's packages:
+# for the wall scanner. To use it, swap it for the feedback package in
+# pantry-scanner.yaml:
 #
 #   packages:
 #     carrier: !include pantry-carrier.yaml
@@ -10,4 +11,4 @@
 packages:
   feedback: !include
     file: pantry-feedback.yaml
-    vars: { buzzer_pin: GPIO18, led_pin: GPIO17, led_chipset: WS2812 }
+    vars: { buzzer_pin: GPIO18, buzzer_inverted: "false", led_pin: GPIO17, led_chipset: WS2812 }

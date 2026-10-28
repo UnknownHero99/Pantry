@@ -1,15 +1,19 @@
-# Buzzer and status LED for the wall scanner, on whichever board has them: the
-# scanner carrier (pantry-carrier.yaml) or the mainboard (pantry-mainboard.yaml).
-# Included with its pins as vars:
+# Buzzer and status LED for the wall scanner: off-the-shelf modules on the Sunton
+# (pantry-scanner.yaml), the scanner carrier (pantry-carrier.yaml) or the mainboard
+# (pantry-mainboard.yaml). Included with its pins as vars:
 #
 #   feedback: !include
 #     file: pantry-feedback.yaml
-#     vars: { buzzer_pin: GPIO18, led_pin: GPIO17, led_chipset: WS2812 }
+#     vars: { buzzer_pin: GPIO18, buzzer_inverted: "true", led_pin: GPIO17, led_chipset: WS2812 }
+#
+# buzzer_inverted: "true" for a buzzer module whose transistor switches on when its
+# input is low (the common 3-pin ones with an 8550 / 9012 PNP), "false" otherwise.
 
 output:
   - platform: ledc
     id: buzzer_out
     pin: ${buzzer_pin}
+    inverted: ${buzzer_inverted}
 
 rtttl:
   output: buzzer_out

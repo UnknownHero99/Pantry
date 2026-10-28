@@ -4,8 +4,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p stl renders build
 run() { docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/w -w /w openscad/openscad:2021.01 "$@" 2>&1 | grep -E "ECHO|ERROR|WARNING" || true; }
-run openscad -D 'part="shell"' -o stl/pantry-scanner-shell.stl pantry-scanner.scad
-run openscad -D 'part="back"' -o stl/pantry-scanner-back.stl pantry-scanner.scad
+run openscad -D 'part="shell"' -o stl/pantry-scanner-shell.stl pantry-scanner.scad &
+run openscad -D 'part="back"' -o stl/pantry-scanner-back.stl pantry-scanner.scad &
+run openscad -D 'board="mainboard"' -D 'part="shell"' -o stl/mainboard-shell.stl pantry-scanner.scad &
+run openscad -D 'board="mainboard"' -D 'part="back"' -o stl/mainboard-back.stl pantry-scanner.scad &
+wait
 
 # Pictures: each piece as a mesh in place, then a scene that only imports and colours them.
 for p in shell back panel pcb scanner; do run openscad -D "part=\"v_$p\"" -D '$fn=40' -o build/$p.stl pantry-scanner.scad; done
