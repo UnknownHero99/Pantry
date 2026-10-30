@@ -1,22 +1,24 @@
 # Pantry wall scanner
 #   Guition JC4880P443C (ESP32-P4, with an ESP32-C6 for Wi-Fi; 4.3" 480x800 IPS
 #   turned to landscape, GT911 capacitive touch)
-#   + a barcode scanner, a buzzer module and a WS2812 LED module on the board's
-#     own connectors. No custom board needed.
+#   + a GROW GM67 barcode scanner, a buzzer module and a WS2812 LED module on the
+#     board's own connectors. No custom board needed.
 #
 # Wiring (board connector → module):
 #   CN2 "UART0", 1.25 mm 4-pin (VIN, TX GPIO37, RX GPIO38, GND)
-#                         → scanner: VIN 5V for a GM65 / GM861, RX, TX, GND
+#                         → GM67 UART (5V, TX, RX, GND): same pin order, so cross
+#                           TX and RX (CN2 pin 2 → GM67 pin 3, pin 3 → pin 2)
 #   JP1, the 2x13 2.54 mm header (each module on three neighbouring pins):
 #     pins 1, 3, 5:  3.3V, GND, GPIO52 → buzzer: VCC, GND, I/O
 #     pins 2, 4, 6:  3.3V, GND, GPIO33 → LED: VCC, GND, DIN
-#     pins 16, 14:   3.3V, GND         → a SparkFun DE2120 scanner's 3V3 (it runs on 3.3 V)
+#     pins 16, 14:   3.3V, GND         → a SparkFun scanner's 3V3 instead (it runs on 3.3 V)
 #   (GPIO52 is an Ethernet pin on paper; this board has no Ethernet chip.)
 # Flash and logs go over the USB-C marked full speed (USB Serial/JTAG), so UART0
 # is the scanner's and the scanner can stay plugged in.
 #
 # Scanner setup (scan the config barcodes in its manual once):
-#   UART output, 9600 baud, continuous/induction mode, add CR suffix.
+#   UART output, 9600 baud, continuous/induction mode, add CR suffix; silent mode,
+#   since the buzzer module does the beeping.
 #
 # This file is the hardware; the screens live in pantry-ui.yaml (+ pantry_ui.h).
 # No hardware yet? pantry-sim.yaml runs the same screens in a desktop window.
@@ -26,7 +28,7 @@ substitutions:
   name: pantry-scanner
   server: http://192.168.10.10:5190   # pantry app, reachable from this VLAN
   location: Pantry                     # where this unit hangs; used for products with no usual place yet
-  scanner_baud: "9600"                 # GM65 default; set the SparkFun DE2120 to 9600 too, or change this
+  scanner_baud: "9600"                 # GM67 / GM65 default; set a SparkFun DE2120 to 9600 too, or change this
   # Early ESP32-P4 chips (revision v1.x) need a build for them. The first USB flash
   # prints "Chip is ESP32-P4 (revision v1.3)" or similar: below v3.0, set this to "true".
   engineering_sample: "false"

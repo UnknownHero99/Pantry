@@ -1,7 +1,7 @@
 // Pantry wall scanner enclosure, price-checker style: the screen face tilts up toward
 // you, an arrow under it points to the scanner in a bevelled "mouth" that looks down
-// and forward, where you hold the product. For the SparkFun 2D Barcode Scanner and
-// one of these (`board`):
+// and forward, where you hold the product. For a GROW GM67 barcode scanner (or the
+// SparkFun 2D Barcode Scanner: `scanner`) and one of these (`board`):
 //   guition   - the Guition JC4880P443C (ESP32-P4) as it comes, plus a buzzer module
 //               and a WS2812 LED module. No custom board.
 //   sunton    - the Sunton ESP32-8048S043C, with the same modules.
@@ -22,6 +22,8 @@ board = "guition";            // guition | sunton | mainboard
 guition = board == "guition";
 sunton = board == "sunton";
 mainboard = board == "mainboard";
+scanner = "gm67";             // gm67 | sparkfun
+gm67 = scanner == "gm67";
 function pick(g, s, m) = guition ? g : sunton ? s : m;
 
 /* [Panel: 4.3" 800x480 TFT with capacitive touch] */
@@ -39,7 +41,9 @@ mouth_angle = 45;             // where the scanner looks: degrees forward of str
 top_margin = 12;              // face above the panel
 chin = 15;                    // face below the panel, with the arrow
 mouth_len = 34;               // the bevelled face the scanner looks through
-depth_top = pick(28, 24, 24); // depth at the top of the screen face (the Guition's header and USB plug face back)
+// Depth at the top of the screen face: more for the Guition (its header and USB plug face
+// back) and the GM67 (a 46.5 mm board along the scanner's line of sight, plug on its end).
+depth_top = max(pick(28, 24, 24), gm67 ? 31 : 0);
 wall = 2.2;
 gap = 0.4;                    // around the panel
 round_r = 2.5;                // edge rounding
@@ -69,11 +73,18 @@ room = pick([0, 0], [10, 1], [0, 0]);   // left, right
 usb_y = pick(undef, 33.8, 30);          // USB-C on the left edge (board x = pcb_w); the Guition's faces back
 cable_x = -34;                // the Guition's USB cable leaves through a notch in the floor here
 
-/* [Scanner: SparkFun 2D Barcode Scanner, module facing the window] */
+/* [Scanner] */
+// GROW GM67: a 27.5 x 46.5 board with the scan engine on one end, looking out past that
+// edge. It slides into two rails along the line of sight, engine against the window, its
+// board toward the screen and its parts (engine, buzzer, sockets) toward the floor.
+gm_w = 27.5; gm_l = 46.5; gm_t = 1.6;
+gm_eng = [28, 12.5, 10];      // engine: across, height above the board, depth
+gm_m = mouth_len / 2 - gm_t - 6;   // the board's screen-side face, down the mouth (engine's lens centred)
+// SparkFun 2D Barcode Scanner (v1, DE2120): lies on two pegs, module facing the window.
 sf_w = 44.45; sf_d = 25.4;
 module_h = 12.5;              // the DE2120 module's height above the SparkFun board
 sf_t = 1.6;
-scan_win = [32, 24];          // window in the mouth, across by along
+scan_win = gm67 ? [27, 10] : [32, 24];   // window in the mouth, across by along
 
 $fn = 40;
 
@@ -136,9 +147,16 @@ module shell() {
 		union() {
 			difference() { outer(); cavity(); }
 			bosses();
-			// scanner: pegs with pins for the SparkFun board's two holes. Mounted this way
-			// round, it lies on top of them (the module hangs toward the window).
-			in_mouth() {
+			// GM67: two rails with a groove for the board's edges. Ahead of the engine's
+			// back only the screen side of the groove, so the engine fits between them.
+			if (gm67) in_mouth() for (side = [-1, 1]) difference() {
+				translate([side > 0 ? gm_w / 2 - 0.8 : -gm_w / 2 - 2.2, gm_m - 1.5, wall - 0.01]) cube([3, gm_t + 3, 44]);
+				translate([side > 0 ? gm_w / 2 - 0.8 - 0.01 : -gm_w / 2 - 0.3, gm_m - 0.15, wall - 1]) cube([1.1 + 0.01, gm_t + 0.3, 50]);
+				translate([side > 0 ? gm_w / 2 - 1 : -gm_w / 2 - 3, gm_m + gm_t, wall - 1]) cube([4, 3, gm_eng[2] + 2]);
+			}
+			// SparkFun: pegs with pins for the board's two holes. Mounted this way round,
+			// it lies on top of them (the module hangs toward the window).
+			if (!gm67) in_mouth() {
 				m0 = (mouth_len - sf_d) / 2;
 				left = -0.73 * sf_w;                  // its hole edge; this centres the module
 				for (m = [m0 + 2.54, m0 + sf_d - 2.54]) {
@@ -258,9 +276,15 @@ module pcb() {
 	}
 }
 module scanner() in_mouth() {
-	m0 = (mouth_len - sf_d) / 2;
-	translate([-0.73 * sf_w, m0, wall + module_h + 0.5]) cube([sf_w, sf_d, sf_t]);
-	translate([-11, mouth_len / 2 - 10.75, wall + 0.5]) cube([22, 21.5, module_h]);
+	if (gm67) {
+		translate([-gm_w / 2, gm_m, wall]) cube([gm_w, gm_t, gm_l]);                               // board
+		translate([-gm_eng[0] / 2, gm_m + gm_t, wall]) cube([gm_eng[0], gm_eng[1], gm_eng[2]]);   // engine
+		translate([-12, gm_m + gm_t, wall + gm_l - 6]) cube([24, 6, 6 + 10]);                     // sockets, plug, cable bend
+	} else {
+		m0 = (mouth_len - sf_d) / 2;
+		translate([-0.73 * sf_w, m0, wall + module_h + 0.5]) cube([sf_w, sf_d, sf_t]);
+		translate([-11, mouth_len / 2 - 10.75, wall + 0.5]) cube([22, 21.5, module_h]);
+	}
 }
 
 explode = 30;

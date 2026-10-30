@@ -11,7 +11,7 @@ know what you have.
 - **Home-made** (harvest, bulk meat, meal prep): *Pack & label* prints one QR label per
   package on a Bluetooth cat printer. Each package keeps its own weight, packed date
   and use-by date, and scanning it OUT removes that exact package.
-- **Wall scanner:** ESP32-S3 4.3" touchscreen + GM65 module, ESPHome firmware
+- **Wall scanner:** ESP32-P4 4.3" touchscreen (Guition) + GM67 barcode module, ESPHome firmware
   (`esphome/`). TAKE OUT / PUT AWAY modes, product photo, count before → after,
   −/+ for multiples, QR to name unknown barcodes, offline queue, ambient night clock.
 - **Phone PWA:** camera scanning, inventory, shopping list, inbox for unknown barcodes,
@@ -148,15 +148,16 @@ Labels encode `PNTRY:I:000123`. The wall scanner and phone camera both read them
 ### Parts
 
 Everything is off the shelf; no custom board needed. Prices are AliExpress, delivered to
-Slovenia, VAT included (October 2026).
+Slovenia, VAT included (October 2026); [hardware/shopping-list.md](hardware/shopping-list.md)
+has the listings, quantities and the small stuff.
 
 | | |
 |---|---|
 | Guition **JC4880P443C** (ESP32-P4 + ESP32-C6 for Wi-Fi, 4.3" 480×800 IPS used in landscape, GT911 capacitive touch) | ~€34 |
-| Barcode scanner, **TTL UART**: a **GM65** / GM861S (not the RS-232 variant), or the **SparkFun 2D Barcode Scanner Breakout** (red aiming line; the [enclosure](hardware/enclosure)'s mount is made for its first version) | ~€19 / ~€70 |
+| **GROW GM67** barcode module (1D + 2D, red aiming light, 5 V, TTL UART; comes with its cables). The [enclosure](hardware/enclosure) is made for it; a GM65 or the SparkFun breakout works with the same firmware. | ~€18 + shipping |
 | **Passive buzzer module**, 3-pin (I/O, VCC, GND) with a transistor | ~€1 |
 | **WS2812B LED module**, a single LED (DIN, VCC, GND) | ~€1 |
-| A 1.25 mm 4-pin cable for the scanner, six female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | |
+| A 1.25 mm 4-pin pigtail for CN2, six female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | ~€5 |
 | [3D-printed case](hardware/enclosure) (or any wall box) | |
 
 The buzzer and LED are optional: without them, drop the `feedback` package from
@@ -166,13 +167,17 @@ The buzzer and LED are optional: without them, drop the `feedback` package from
 
 | Guition | Goes to |
 |---|---|
-| **CN2 "UART0"** (1.25 mm 4-pin) `GND` | scanner GND |
-| **CN2** `RX` (GPIO38) | scanner TX |
-| **CN2** `TX` (GPIO37) | scanner RX |
-| **CN2** `VIN` (5 V) | GM65: VCC. The SparkFun board runs on 3.3 V: leave this free. |
+| **CN2 "UART0"** (1.25 mm 4-pin) pin 1 `VIN` (5 V) | GM67 UART pin 1 `5V` |
+| **CN2** pin 2 `TX` (GPIO37) | GM67 pin 3 `RX` |
+| **CN2** pin 3 `RX` (GPIO38) | GM67 pin 2 `TX` |
+| **CN2** pin 4 `GND` | GM67 pin 4 `GND` |
 | **JP1** (2×13 header) pins **1, 3, 5**: 3.3 V, GND, GPIO52 | buzzer VCC, GND, I/O |
 | **JP1** pins **2, 4, 6**: 3.3 V, GND, GPIO33 | LED VCC, GND, DIN |
-| **JP1** pins **16, 14**: 3.3 V, GND | SparkFun scanner's 3V3 and GND |
+
+Both 4-pin connectors have the same pin order, so **TX and RX must cross**: a straight
+cable between them won't work. Join a 1.25 mm pigtail from CN2 to the GM67's own UART cable
+with pins 2 and 3 swapped (solder and heat-shrink). The GM67's UART socket is the one
+marked UART, next to the USB one.
 
 Each module takes three neighbouring header pins, so it's one 3-pin Dupont plug and no
 splicing. The LED runs on 3.3 V so its data input sees a full-level signal; WS2812B LEDs are
@@ -192,8 +197,11 @@ with one 4-layer board for the bare panel ([esphome/pantry-mainboard.yaml](espho
 
 ### Scanner module setup
 
-Using the configuration barcodes in the scanner's manual: **serial (UART) output, 9600
-baud, induction/continuous mode, add CR suffix**, and make sure QR codes are enabled.
+Using the configuration barcodes in the scanner's manual (the
+[GM67 manual](https://makerselectronics.com/wp-content/uploads/2026/07/GM67-Barcode-Reader-Module-User-Manual-V1.3.pdf)):
+**serial (UART) output, 9600 baud, induction/continuous mode, add CR suffix**, and make
+sure QR codes are enabled. The GM67 also beeps by itself on every read; its **silent mode**
+leaves the beeping to the buzzer module, which sounds different for each result.
 (Or keep its baud rate and change `scanner_baud` in `pantry-scanner.yaml`.)
 
 ### Flash

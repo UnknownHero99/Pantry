@@ -1,9 +1,10 @@
 # Wall scanner enclosure
 
 A printable case in the style of a shop price checker (like the Champtek SG-15), for the
-Guition JC4880P443C (ESP32-P4) display board as it comes, the SparkFun 2D Barcode
-Scanner, and a buzzer module and a WS2812B LED module. No custom board. (For the Sunton
-or the optional [mainboard](../mainboard), see [Other boards](#other-boards).)
+Guition JC4880P443C (ESP32-P4) display board as it comes, a GROW GM67 barcode scanner,
+and a buzzer module and a WS2812B LED module. No custom board. (For the Sunton, the
+optional [mainboard](../mainboard) or the SparkFun scanner, see
+[Other boards and scanners](#other-boards-and-scanners).)
 
 ![Front](renders/front.png)
 
@@ -14,7 +15,7 @@ or the optional [mainboard](../mainboard), see [Other boards](#other-boards).)
 | ![Inside](renders/inside.png) | ![Exploded](renders/exploded.png) |
 | Inside, back plate off: the board behind its screen with the plugs on its header and USB-C, the scanner in the mouth, the LED and buzzer modules | Back plate: keyholes, and posts that hold the board by its mounting ears |
 
-Outside about **122 wide × 145 high × 56 deep** (mm, including the back plate).
+Outside about **122 wide × 148 high × 59 deep** (mm, including the back plate).
 
 ## The shape
 
@@ -47,9 +48,10 @@ screws with heads up to 8 mm, thin double-sided foam tape, a little hot glue, a
 1. **Display**: stick it into the shell, glass against the bezel, with a few strips of foam
    tape. Its two USB-C ports and the 2×13 header go to the left (as you look at the
    screen).
-2. **Scanner**: solder a straight 6-pin header to the SparkFun board on the **back** (pins
-   away from the module). Drop it onto the two pins in the mouth, module facing the window;
-   a dab of hot glue keeps it there.
+2. **Scanner**: two rails stand in the mouth along the scanner's line of sight. Slide the
+   GM67 into their grooves from behind, scan engine first and its parts facing the floor,
+   until the engine sits against the window. A dab of hot glue on each rail keeps it there.
+   Plug its UART cable in first: there's room for the plug at the far end, not for fingers.
 3. **LED module**: hot-glue it inside the mouth over the slit left of the scanner window,
    LED facing the slit.
 4. **Buzzer module**: hot-glue it on the floor, buzzer down over the five vents (right of
@@ -61,7 +63,10 @@ screws with heads up to 8 mm, thin double-sided foam tape, a little hot glue, a
 7. **Close**: back plate on (its posts land on the display's four mounting ears, pins in
    their 2 mm holes), four screws, hang it on the two wall screws.
 
-## Other boards
+## Other boards and scanners
+
+`scanner = "sparkfun"` puts back the mount for the SparkFun 2D Barcode Scanner (v1, DE2120):
+it lies on two pegs in the mouth, and the case is 3 mm shallower.
 
 `board` at the top of [pantry-scanner.scad](pantry-scanner.scad) also takes:
 
@@ -100,7 +105,8 @@ holes (Ø2 on 108 × 60 mm, in ears 5 mm behind the glass) and its depth (13.8 m
 come from the maker's spec sheet; where the USB-C ports and the header sit is read off its
 drawing, and the picture is taken to be centred in the glass. Measure yours and adjust
 `panel_*`, `win`, `pcb_*` and `pcb_holes` before printing; `depth_top` leaves about 20 mm
-behind the board for the Dupont plugs and the USB plug. The DE2120 module's height
-(`module_h = 12.5`) sets how far the scanner sits behind its window; check it on yours.
-SparkFun has replaced that board with a v2 (a different scanner engine): check its size
-against `sf_w`, `sf_d` and the two mounting holes if that's the one you get.
+behind the board for the Dupont plugs and the USB plug. The GM67's size (27.5 × 46.5 mm,
+14 mm tall) and its engine's front (28 × 12 mm) come from GROW's manual; that the engine sits
+flush with the board's end, and how far its plug sticks out, are read off the photo. Check
+`gm_*` against yours. For a SparkFun v2 (SparkFun's replacement for v1, a different scanner
+engine), check its size against `sf_w`, `sf_d` and the two mounting holes.
