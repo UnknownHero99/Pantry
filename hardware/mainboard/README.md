@@ -2,8 +2,8 @@
 
 Everything for the wall scanner on one board: it replaces the Sunton ESP32-8048S043C.
 A 100 × 60 mm, 4-layer board that sits behind a bare 4.3" 800×480 RGB panel; every part
-is on the back, so JLCPCB assembles one side only. Optional: the Sunton plus
-off-the-shelf modules does the same job (see the [main README](../../README.md#wall-scanner-esphome)).
+is on the back, so JLCPCB assembles one side only. Optional: an off-the-shelf display
+board plus modules does the same job (see the [main README](../../README.md#wall-scanner-esphome)).
 Goes into the [printable enclosure](../enclosure) built with `board = "mainboard"`
 (`stl/mainboard-*.stl`).
 

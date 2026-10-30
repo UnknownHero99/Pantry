@@ -3,8 +3,9 @@
 A 64 × 44 mm two-layer board that sits behind the Sunton ESP32-8048S043C and
 adds a scanner socket, a buzzer and a status LED. Optional: the same parts as
 off-the-shelf modules wired straight to the Sunton need no board at all (see the
-[main README](../../README.md#wiring)); this is the tidier version for a box of
-your own (the [printable enclosure](../enclosure) is laid out for the modules):
+header of [pantry-sunton.yaml](../../esphome/pantry-sunton.yaml)); this is the tidier
+version for a box of your own (the [printable enclosure](../enclosure) is laid out for
+the modules):
 
 - **SparkFun 2D Barcode Scanner Breakout** (DyScan DE2120): the red aiming line,
   reads EAN/UPC *and* the QR labels. It plugs into a 1×6 socket and an M3 standoff.
@@ -69,7 +70,7 @@ of it), so use a 2 A supply.
 
 ## Firmware
 
-In [esphome/pantry-scanner.yaml](../../esphome/pantry-scanner.yaml), replace the
+In [esphome/pantry-sunton.yaml](../../esphome/pantry-sunton.yaml), replace the
 `feedback` package (made for the modules) with the carrier's:
 
 ```yaml
@@ -85,7 +86,7 @@ every scan.
 **Set up the DE2120** once with the configuration barcodes in its settings manual:
 TTL/UART output, **9600 baud**, **CR suffix**, and a scan mode that suits you
 (motion/continuous for a wall unit). Or leave its baud rate and change
-`scanner_baud` in `pantry-scanner.yaml` to match.
+`scanner_baud` in `pantry-sunton.yaml` to match.
 
 ## Rebuilding
 

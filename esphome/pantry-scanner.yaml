@@ -1,60 +1,81 @@
 # Pantry wall scanner
-#   Sunton ESP32-8048S043C (ESP32-S3, 4.3" 800x480, GT911 capacitive touch)
-#   + a barcode scanner, a buzzer module and a WS2812 LED module on its two
-#     1.25 mm 4-pin connectors. No custom board needed.
+#   Guition JC4880P443C (ESP32-P4, with an ESP32-C6 for Wi-Fi; 4.3" 480x800 IPS
+#   turned to landscape, GT911 capacitive touch)
+#   + a barcode scanner, a buzzer module and a WS2812 LED module on the board's
+#     own connectors. No custom board needed.
 #
-# Wiring (Sunton connector → module):
-#   P1 (GND, RXD, TXD, 5V)       → scanner: GND, TX, RX; 5V for a GM65 / GM861
-#   P4 (GND, 3.3V, IO17, IO18)   → 3.3V for the SparkFun DE2120 scanner, the LED and
-#                                  the buzzer; IO17 → LED DIN, IO18 → buzzer I/O
-# GPIO43/44 (P1) is also the USB serial, so unplug the scanner for the very first
-# USB flash; after that, update over Wi-Fi (OTA).
+# Wiring (board connector → module):
+#   CN2 "UART0", 1.25 mm 4-pin (VIN, TX GPIO37, RX GPIO38, GND)
+#                         → scanner: VIN 5V for a GM65 / GM861, RX, TX, GND
+#   JP1, the 2x13 2.54 mm header (each module on three neighbouring pins):
+#     pins 1, 3, 5:  3.3V, GND, GPIO52 → buzzer: VCC, GND, I/O
+#     pins 2, 4, 6:  3.3V, GND, GPIO33 → LED: VCC, GND, DIN
+#     pins 16, 14:   3.3V, GND         → a SparkFun DE2120 scanner's 3V3 (it runs on 3.3 V)
+#   (GPIO52 is an Ethernet pin on paper; this board has no Ethernet chip.)
+# Flash and logs go over the USB-C marked full speed (USB Serial/JTAG), so UART0
+# is the scanner's and the scanner can stay plugged in.
 #
 # Scanner setup (scan the config barcodes in its manual once):
 #   UART output, 9600 baud, continuous/induction mode, add CR suffix.
 #
 # This file is the hardware; the screens live in pantry-ui.yaml (+ pantry_ui.h).
 # No hardware yet? pantry-sim.yaml runs the same screens in a desktop window.
+# On the Sunton ESP32-8048S043C instead: pantry-sunton.yaml.
 
 substitutions:
   name: pantry-scanner
   server: http://192.168.10.10:5190   # pantry app, reachable from this VLAN
   location: Pantry                     # where this unit hangs; used for products with no usual place yet
   scanner_baud: "9600"                 # GM65 default; set the SparkFun DE2120 to 9600 too, or change this
+  # Early ESP32-P4 chips (revision v1.x) need a build for them. The first USB flash
+  # prints "Chip is ESP32-P4 (revision v1.3)" or similar: below v3.0, set this to "true".
+  engineering_sample: "false"
+  # The panel is portrait; this turns it (and touch) to landscape. Upside down? 270.
+  rotation: "90"
 
 esphome:
   name: ${name}
   friendly_name: Pantry scanner
 
 # The buzzer and status LED, and the screens (shared with pantry-sim.yaml).
-# No buzzer or LED? Drop feedback. With the scanner carrier board
-# (hardware/scanner-carrier), replace feedback with carrier.
+# No buzzer or LED? Drop feedback.
 packages:
   feedback: !include
     file: pantry-feedback.yaml
-    vars: { buzzer_pin: GPIO18, buzzer_inverted: "true", led_pin: GPIO17, led_chipset: WS2812 }
-  # carrier: !include pantry-carrier.yaml
+    vars: { buzzer_pin: GPIO52, buzzer_inverted: "true", led_pin: GPIO33, led_chipset: WS2812 }
   ui: !include pantry-ui.yaml
 
+# Added to the lvgl: block in pantry-ui.yaml.
+lvgl:
+  rotation: ${rotation}
+
 esp32:
-  board: esp32-s3-devkitc-1
-  variant: esp32s3
+  variant: esp32p4
+  engineering_sample: ${engineering_sample}
+  cpu_frequency: 360MHz   # 400 MHz is still experimental on the P4 in ESPHome
   flash_size: 16MB
   framework:
     type: esp-idf
-    sdkconfig_options:
-      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: y
-      CONFIG_ESP32S3_DATA_CACHE_64KB: y
-      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
-      CONFIG_SPIRAM_RODATA: y
 
 psram:
-  mode: octal
-  speed: 80MHz
+  mode: hex
+  speed: 200MHz
 
-# UART0 belongs to the scanner; logs are still available over Wi-Fi.
+# UART0 belongs to the scanner; logs go to the USB-C (and over Wi-Fi).
 logger:
-  baud_rate: 0
+  hardware_uart: USB_SERIAL_JTAG
+
+# The P4 has no radio: Wi-Fi is the ESP32-C6 next to it, over SDIO.
+esp32_hosted:
+  variant: ESP32C6
+  reset_pin: GPIO54
+  active_high: true
+  clk_pin: GPIO18
+  cmd_pin: GPIO19
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
 
 wifi:
   ssid: !secret wifi_ssid
@@ -68,6 +89,15 @@ api:
 ota:
   - platform: esphome
 
+# The C6 ships with an older ESP-Hosted firmware than ESPHome expects, which
+# can drop Wi-Fi now and then. This offers ESPHome's build of it as an update
+# in Home Assistant (Settings → Devices → Pantry scanner): install it once.
+update:
+  - platform: esp32_hosted
+    name: Wi-Fi co-processor
+    type: http
+    source: https://esphome.github.io/esp-hosted-firmware/manifest/esp32c6.json
+
 # The clock comes from Home Assistant, so the IoT VLAN needs no internet.
 time:
   - platform: homeassistant
@@ -75,10 +105,11 @@ time:
 
 # ── hardware ────────────────────────────────────────────────────────────
 
+# GPIO37/38 are strapping pins, but they are the board's own UART0 connector.
 uart:
   - id: scanner_uart
-    tx_pin: GPIO43
-    rx_pin: GPIO44
+    tx_pin: { number: GPIO37, ignore_strapping_warning: true }
+    rx_pin: { number: GPIO38, ignore_strapping_warning: true }
     baud_rate: ${scanner_baud}
     debug:
       direction: RX
@@ -92,9 +123,14 @@ uart:
             for (auto b : bytes) if (b > 32 && b < 127) code += (char) b;
             if (!code.empty()) id(handle_scan)->execute(code);
 
+# The DSI PHY's 2.5 V supply.
+esp_ldo:
+  - channel: 3
+    voltage: 2.5V
+
 output:
   - platform: ledc
-    pin: GPIO2
+    pin: GPIO23
     id: backlight_pwm
 
 light:
@@ -105,42 +141,26 @@ light:
     restore_mode: ALWAYS_ON
     default_transition_length: 300ms
 
-# GPIO19/20 would clash with native USB-JTAG, but this board's USB goes
-# through a CH340 on UART0 instead, so ESPHome's warning about them is moot.
+# Touch, the audio codec and the camera share this bus.
 i2c:
-  sda: GPIO19
-  scl: GPIO20
+  sda: GPIO7
+  scl: GPIO8
+  frequency: 400kHz
 
+# Polled: sources disagree on the touch controller's reset and interrupt pins
+# (GPIO22/21 in the schematic notes, GPIO3 in a working config), so neither is used.
 touchscreen:
   - platform: gt911
     id: touch
     display: main_display
+    update_interval: 50ms
     on_touch:
       - script.execute: wake
 
 display:
-  - platform: rpi_dpi_rgb
+  - platform: mipi_dsi
     id: main_display
-    color_order: RGB
-    invert_colors: true
+    model: JC4880P443
+    byte_order: little_endian
     update_interval: never
     auto_clear_enabled: false
-    dimensions:
-      width: 800
-      height: 480
-    de_pin: GPIO40
-    hsync_pin: GPIO39
-    vsync_pin: GPIO41
-    pclk_pin: GPIO42
-    pclk_frequency: 16MHz
-    pclk_inverted: true
-    hsync_pulse_width: 4
-    hsync_front_porch: 8
-    hsync_back_porch: 8
-    vsync_pulse_width: 4
-    vsync_front_porch: 8
-    vsync_back_porch: 8
-    data_pins:
-      red: [GPIO45, GPIO48, GPIO47, GPIO21, GPIO14]
-      green: [GPIO5, GPIO6, GPIO7, GPIO15, GPIO16, GPIO4]
-      blue: [GPIO8, GPIO3, GPIO46, GPIO9, GPIO1]

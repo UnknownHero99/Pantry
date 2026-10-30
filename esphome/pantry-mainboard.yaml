@@ -2,7 +2,7 @@
 # N16R8 behind a bare 4.3" 800x480 RGB panel with GT911 touch, plus scanner,
 # buzzer and side-view status LED on the same board.
 #
-# Differences from the Sunton build (pantry-scanner.yaml):
+# Differences from the Sunton build (pantry-sunton.yaml):
 #   - USB-C is the ESP32-S3's native USB: flashing and logs go there, so the
 #     scanner has UART0 (GPIO43/44) to itself. No unplugging to flash.
 #   - the display's RGB signals sit on GPIOs in the ribbon connector's order

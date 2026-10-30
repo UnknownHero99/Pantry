@@ -1,5 +1,6 @@
 # Pantry wall scanner: the screens and their behaviour.
-# Included as a package by pantry-scanner.yaml (the real board) and
+# Included as a package by pantry-scanner.yaml (the real board; also
+# pantry-sunton.yaml and pantry-mainboard.yaml for the other boards) and
 # pantry-sim.yaml (a desktop window). Those provide the hardware ids used
 # here: main_display, touch, backlight, ha_time, and the substitutions
 # `server` and `location`. Scans come in through script `handle_scan`.

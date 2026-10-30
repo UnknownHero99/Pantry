@@ -1,6 +1,7 @@
-# Buzzer and status LED for the wall scanner: off-the-shelf modules on the Sunton
-# (pantry-scanner.yaml), the scanner carrier (pantry-carrier.yaml) or the mainboard
-# (pantry-mainboard.yaml). Included with its pins as vars:
+# Buzzer and status LED for the wall scanner: off-the-shelf modules on the Guition
+# (pantry-scanner.yaml) or the Sunton (pantry-sunton.yaml), the scanner carrier
+# (pantry-carrier.yaml) or the mainboard (pantry-mainboard.yaml). Included with its
+# pins as vars:
 #
 #   feedback: !include
 #     file: pantry-feedback.yaml

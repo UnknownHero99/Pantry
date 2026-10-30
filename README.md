@@ -147,15 +147,16 @@ Labels encode `PNTRY:I:000123`. The wall scanner and phone camera both read them
 
 ### Parts
 
-Everything is off the shelf; no custom board needed.
+Everything is off the shelf; no custom board needed. Prices are AliExpress, delivered to
+Slovenia, VAT included (October 2026).
 
 | | |
 |---|---|
-| Sunton **ESP32-8048S043C** (ESP32-S3 N16R8, 4.3" 800×480, *capacitive* GT911 touch) | ~€28 |
-| Barcode scanner, **TTL UART**: the **SparkFun 2D Barcode Scanner Breakout** (DE2120, red aiming line; the [enclosure](hardware/enclosure) is made for it) or a **GM65** / GM861S (not the RS-232 variant) | |
+| Guition **JC4880P443C** (ESP32-P4 + ESP32-C6 for Wi-Fi, 4.3" 480×800 IPS used in landscape, GT911 capacitive touch) | ~€34 |
+| Barcode scanner, **TTL UART**: a **GM65** / GM861S (not the RS-232 variant), or the **SparkFun 2D Barcode Scanner Breakout** (red aiming line; the [enclosure](hardware/enclosure)'s mount is made for its first version) | ~€19 / ~€70 |
 | **Passive buzzer module**, 3-pin (I/O, VCC, GND) with a transistor | ~€1 |
-| **WS2812B LED module**, a single LED (DIN, 5V/VCC, GND) | ~€1 |
-| Two 1.25 mm 4-pin cables (come with the Sunton), a few Dupont wires, 5 V 2 A USB-C supply | |
+| **WS2812B LED module**, a single LED (DIN, VCC, GND) | ~€1 |
+| A 1.25 mm 4-pin cable for the scanner, six female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | |
 | [3D-printed case](hardware/enclosure) (or any wall box) | |
 
 The buzzer and LED are optional: without them, drop the `feedback` package from
@@ -163,35 +164,31 @@ The buzzer and LED are optional: without them, drop the `feedback` package from
 
 ### Wiring
 
-The Sunton has two 4-pin 1.25 mm connectors for all of it:
-
-| Sunton | Goes to |
+| Guition | Goes to |
 |---|---|
-| **P1** `GND` | scanner GND |
-| **P1** `RXD` (GPIO44) | scanner TX |
-| **P1** `TXD` (GPIO43) | scanner RX |
-| **P1** `5V` | GM65: VCC. The DE2120 runs on 3.3 V: leave this free. |
-| **P4** `GND` | LED GND, buzzer GND (and the scanner's, already on P1) |
-| **P4** `3.3V` | LED VCC, buzzer VCC, DE2120 3V3 |
-| **P4** `IO17` | LED DIN |
-| **P4** `IO18` | buzzer I/O |
+| **CN2 "UART0"** (1.25 mm 4-pin) `GND` | scanner GND |
+| **CN2** `RX` (GPIO38) | scanner TX |
+| **CN2** `TX` (GPIO37) | scanner RX |
+| **CN2** `VIN` (5 V) | GM65: VCC. The SparkFun board runs on 3.3 V: leave this free. |
+| **JP1** (2×13 header) pins **1, 3, 5**: 3.3 V, GND, GPIO52 | buzzer VCC, GND, I/O |
+| **JP1** pins **2, 4, 6**: 3.3 V, GND, GPIO33 | LED VCC, GND, DIN |
+| **JP1** pins **16, 14**: 3.3 V, GND | SparkFun scanner's 3V3 and GND |
 
-P4's 3.3 V and GND feed two or three modules: splice them (solder and heat-shrink, or a
-small lever connector). The LED runs on 3.3 V so its data input sees a full-level signal;
-WS2812B LEDs are rated from 3.5 V but work at 3.3 V.
+Each module takes three neighbouring header pins, so it's one 3-pin Dupont plug and no
+splicing. The LED runs on 3.3 V so its data input sees a full-level signal; WS2812B LEDs are
+rated from 3.5 V but work at 3.3 V. The buzzer module's transistor usually switches on when
+I/O is **low** (an 8550 / 9012 PNP), which is what `buzzer_inverted: "true"` expects. If
+yours is silent or hisses when idle, set it to `"false"`.
 
-The buzzer module's transistor usually switches on when I/O is **low** (an 8550 / 9012
-PNP), which is what `buzzer_inverted: "true"` in `pantry-scanner.yaml` expects. If yours
-is silent or hisses when idle, set it to `"false"`.
+Flashing and logs go over the USB-C marked **full speed** (the ESP32-P4's USB
+Serial/JTAG), so the scanner keeps UART0 and can stay plugged in.
 
-GPIO43/44 is also the board's USB serial, so **unplug the scanner for the very first USB
-flash**. After that, update over Wi-Fi.
-
-**Optional custom boards** for a tidier build, neither needed:
-[hardware/scanner-carrier](hardware/scanner-carrier) is a small PCB behind the Sunton
-with sockets for the scanner, a buzzer and a status LED (swap `feedback` for the `carrier`
-package); [hardware/mainboard](hardware/mainboard) replaces the Sunton with one 4-layer
-board for the bare panel ([esphome/pantry-mainboard.yaml](esphome/pantry-mainboard.yaml)).
+**Other boards.** [esphome/pantry-sunton.yaml](esphome/pantry-sunton.yaml) is the same
+thing on the Sunton **ESP32-8048S043C** (ESP32-S3, ~€52 delivered), with its wiring in the
+file's header. Two optional custom boards, neither needed:
+[hardware/scanner-carrier](hardware/scanner-carrier) sits behind the Sunton with sockets for
+the scanner, a buzzer and a status LED; [hardware/mainboard](hardware/mainboard) replaces it
+with one 4-layer board for the bare panel ([esphome/pantry-mainboard.yaml](esphome/pantry-mainboard.yaml)).
 
 ### Scanner module setup
 
@@ -205,20 +202,31 @@ baud, induction/continuous mode, add CR suffix**, and make sure QR codes are ena
 cd esphome
 cp secrets.example.yaml secrets.yaml   # Wi-Fi, API key: openssl rand -base64 32 (OTA uses it too)
 # edit substitutions at the top of pantry-scanner.yaml: server URL, location name
-docker run --rm -it -v "$PWD":/config --device /dev/ttyUSB0 esphome/esphome run pantry-scanner.yaml
+docker run --rm -it -v "$PWD":/config --device /dev/ttyACM0 esphome/esphome run pantry-scanner.yaml
 ```
 
+The first flash prints the chip's revision (`Chip is ESP32-P4 (revision v…)`). Below
+v3.0 it's an early chip: set `engineering_sample: "true"` in `pantry-scanner.yaml` and
+flash again. After that, update over Wi-Fi.
+
 Or use the ESPHome dashboard in Home Assistant: copy `pantry-scanner.yaml`,
-`pantry-ui.yaml` (the screens, included as a package) and `pantry_ui.h` into its config
-folder. The board shows up in HA with a backlight light
+`pantry-ui.yaml` (the screens), `pantry-feedback.yaml` (buzzer and LED) and `pantry_ui.h`
+into its config folder. The board shows up in HA with a backlight light
 and a "Last scan" sensor, and takes its clock from HA, so it needs no internet.
+
+**Wi-Fi co-processor.** The P4 has no radio; Wi-Fi is the ESP32-C6 beside it. These boards
+ship with an older C6 firmware than ESPHome expects, which can drop Wi-Fi now and then.
+Once the scanner is in HA, install the **Wi-Fi co-processor** update it offers (ESPHome's
+build, downloaded by the scanner itself).
 
 Set `ORIGIN` on the server: the unknown-barcode screen shows a QR code of
 `<ORIGIN>/product/<id>`, which opens the product on your phone to name it.
 
-The config is validated and compiles against ESPHome 2026.10. The **display timing and
-pins are the commonly published ones for this board** and have not been tested on
-hardware. If the image is shifted, try `pclk_frequency: 12MHz` or toggle `pclk_inverted`.
+The config is validated and compiles against ESPHome 2026.10 (RAM 16%, flash 24%), but
+hasn't run on a board yet. The display and Wi-Fi settings are ESPHome's own for this board
+(`model: JC4880P443`, ESP-Hosted over SDIO) and the pins come from its schematic notes.
+If the picture is upside down, set `rotation: "270"`. Touch is polled, because the
+sources disagree on its reset and interrupt pins.
 
 ### Try it without the hardware
 

@@ -1,30 +1,37 @@
 // Pantry wall scanner enclosure, price-checker style: the screen face tilts up toward
 // you, an arrow under it points to the scanner in a bevelled "mouth" that looks down
 // and forward, where you hold the product. For the SparkFun 2D Barcode Scanner and
-// either board (`board`):
-//   sunton    - the Sunton ESP32-8048S043C as it comes, plus a buzzer module and a
-//               WS2812 LED module. No custom board.
+// one of these (`board`):
+//   guition   - the Guition JC4880P443C (ESP32-P4) as it comes, plus a buzzer module
+//               and a WS2812 LED module. No custom board.
+//   sunton    - the Sunton ESP32-8048S043C, with the same modules.
 //   mainboard - hardware/mainboard behind a bare 4.3" 800x480 capacitive panel.
 //
 // Two printed parts:
 //   shell - everything but the back. Prints standing on its flat bottom, no supports:
 //           every face is within 45 degrees of vertical, the windows have chamfered edges.
 //   back  - back plate: closes the shell with 4 x M3, hangs on 2 wall screws (keyholes),
-//           and its 4 posts hold the board against the panel (pins in the board's holes).
+//           and its 4 posts hold the board against the panel (pins in its mounting holes).
 //
 //   openscad -D 'part="shell"' -o shell.stl pantry-scanner.scad
 //
 // Frame: X right (seen from the front), Y up, Z out of the wall. The back is z = 0.
 
 part = "assembly";            // shell | back | assembly | v_shell | v_back | v_panel | v_pcb | v_scanner
-board = "sunton";             // sunton | mainboard
+board = "guition";            // guition | sunton | mainboard
+guition = board == "guition";
 sunton = board == "sunton";
+mainboard = board == "mainboard";
+function pick(g, s, m) = guition ? g : sunton ? s : m;
 
-/* [Panel: 4.3" 800x480 RGB TFT with capacitive touch] */
-panel_w = 105.5;              // outline of the cover glass
-panel_h = 67.2;
-panel_t = 5.0;                // glass + TFT + foam tape
+/* [Panel: 4.3" 800x480 TFT with capacitive touch] */
+panel_w = pick(117.01, 105.5, 105.5);   // outline of the cover glass
+panel_h = pick(69.41, 67.2, 67.2);
+panel_t = pick(4.8, 5.0, 5.0);          // glass + TFT (+ foam tape)
 lip = 2.5;                    // how far the bezel covers the glass edge
+// The window in the bezel. The Guition's glass has a wide black border around its
+// 93.6 x 56.16 picture; the window shows the picture and a little of the border.
+win = pick([101, 61.5], [panel_w - 2 * lip, panel_h - 2 * lip], [panel_w - 2 * lip, panel_h - 2 * lip]);
 
 /* [Shape] */
 tilt = 15;                    // screen face, degrees back from vertical
@@ -32,7 +39,7 @@ mouth_angle = 45;             // where the scanner looks: degrees forward of str
 top_margin = 12;              // face above the panel
 chin = 15;                    // face below the panel, with the arrow
 mouth_len = 34;               // the bevelled face the scanner looks through
-depth_top = 24;               // depth at the top of the screen face
+depth_top = pick(28, 24, 24); // depth at the top of the screen face (the Guition's header and USB plug face back)
 wall = 2.2;
 gap = 0.4;                    // around the panel
 round_r = 2.5;                // edge rounding
@@ -42,21 +49,30 @@ back_t = 3;
 
 /* [Board] */
 // Board coordinates are seen from its back (the side away from the panel), x from the
-// left, y from the top: the Sunton's dimension drawing, and KiCad's view of the mainboard.
-pcb_t = 1.6;
-pcb_w = sunton ? 123 : 100;
-pcb_h = sunton ? 74 : 60;
-pcb_top = sunton ? -3.0 : 6.5;   // board's top edge below the panel's top (the Sunton's is above it)
-pcb_holes = sunton ? [[3.5, 3.5], [119.5, 3.5], [3.5, 70.5], [119.5, 70.5]]
-                   : [[3.5, 3.5], [96.5, 3.5], [3.5, 56.5], [96.5, 56.5]];
+// left, y from the top, as in the makers' dimension drawings and KiCad's view of the
+// mainboard. The Guition's board and parts are one block here (its drawing gives only
+// the outline: 102.6 x 65.06, 9 mm deep behind the glass), and it mounts by four
+// 2 mm holes in ears on its frame, 5 mm behind the glass, outside that block.
+pcb_t = pick(9, 1.6, 1.6);
+pcb_w = pick(102.6, 123, 100);
+pcb_h = pick(65.06, 74, 60);
+pcb_top = pick((69.41 - 65.06) / 2, -3.0, 6.5);   // board's top edge below the panel's top
+pcb_holes = pick([[-2.7, 2.53], [105.3, 2.53], [-2.7, 62.53], [105.3, 62.53]],
+                 [[3.5, 3.5], [119.5, 3.5], [3.5, 70.5], [119.5, 70.5]],
+                 [[3.5, 3.5], [96.5, 3.5], [3.5, 56.5], [96.5, 56.5]]);
+hole_d = pick(2, 3.2, 3.2);
+post_from = pick(5, pcb_t, pcb_t);  // where the back plate's posts land, behind the board's front
+post_d = pick(4.6, 6, 6);
 // Room between the board's edges and the side walls, seen from the front. The Sunton's
 // USB-C and P1 sockets face the left wall; P1's plug and cable need about 9 mm.
-room = sunton ? [10, 1] : [0, 0];   // left, right
-usb_y = sunton ? 33.8 : 30;         // USB-C on the left edge (board x = pcb_w)
+room = pick([0, 0], [10, 1], [0, 0]);   // left, right
+usb_y = pick(undef, 33.8, 30);          // USB-C on the left edge (board x = pcb_w); the Guition's faces back
+cable_x = -34;                // the Guition's USB cable leaves through a notch in the floor here
 
 /* [Scanner: SparkFun 2D Barcode Scanner, module facing the window] */
 sf_w = 44.45; sf_d = 25.4;
 module_h = 12.5;              // the DE2120 module's height above the SparkFun board
+sf_t = 1.6;
 scan_win = [32, 24];          // window in the mouth, across by along
 
 $fn = 40;
@@ -127,14 +143,15 @@ module shell() {
 				left = -0.73 * sf_w;                  // its hole edge; this centres the module
 				for (m = [m0 + 2.54, m0 + sf_d - 2.54]) {
 					translate([left + 2.54, m, wall]) cylinder(d = 5.5, h = module_h + 0.5);
-					translate([left + 2.54, m, wall]) cylinder(d = 2.8, h = module_h + 0.5 + pcb_t + 1.5);
+					translate([left + 2.54, m, wall]) cylinder(d = 2.8, h = module_h + 0.5 + sf_t + 1.5);
 				}
 			}
 		}
 		// screen window, edges chamfered 45 degrees (so its top edge needs no bridge)
 		in_face() hull() {
-			translate([-(panel_w / 2 - lip), top_margin + lip, wall - 0.01]) cube([panel_w - 2 * lip, panel_h - 2 * lip, 0.02]);
-			translate([-(panel_w / 2 - lip + wall), top_margin + lip - wall, -0.02]) cube([panel_w - 2 * lip + 2 * wall, panel_h - 2 * lip + 2 * wall, 0.02]);
+			wm = (panel_h - win[1]) / 2;
+			translate([-win[0] / 2, top_margin + wm, wall - 0.01]) cube([win[0], win[1], 0.02]);
+			translate([-win[0] / 2 - wall, top_margin + wm - wall, -0.02]) cube([win[0] + 2 * wall, win[1] + 2 * wall, 0.02]);
 		}
 		// scanner window, chamfered the same way
 		in_mouth() hull() {
@@ -148,11 +165,13 @@ module shell() {
 		in_face() translate([0, top_margin + panel_h + chin / 2, -0.5]) linear_extrude(1.5)
 			polygon([[-8, -4.5], [-5.5, -4.5], [0, 1], [5.5, -4.5], [8, -4.5], [0, 4.5]]);
 		// USB-C in the left wall, big enough for the plug's moulding
-		in_face() translate([-W / 2 - scr_x - 1, bs(usb_y), board_w + pcb_t + 1.6]) rotate([0, 90, 0]) hull()
+		if (!guition) in_face() translate([-W / 2 - scr_x - 1, bs(usb_y), board_w + pcb_t + 1.6]) rotate([0, 90, 0]) hull()
 			for (d = [-2.75, 2.75]) translate([0, d, 0]) cylinder(d = 7.5, h = wall + 3);
+		// the Guition's USB-C faces back: a right-angle plug's cable leaves through the floor
+		if (guition) translate([cable_x - 3.5, -1, -1]) cube([7, wall + 2, 7]);
 		// buzzer vents: in the floor under the buzzer module, or in the left wall beside
 		// the mainboard's buzzer (board 88, 6.5)
-		if (sunton) for (i = [-2:2]) translate([scr_x + buzz_xz[0] + 3 * i - 0.8, -1, buzz_xz[1] - 5]) cube([1.6, wall + 2, 10]);
+		if (!mainboard) for (i = [-2:2]) translate([scr_x + buzz_xz[0] + 3 * i - 0.8, -1, buzz_xz[1] - 5]) cube([1.6, wall + 2, 10]);
 		else in_face() for (i = [-2:2]) translate([-W / 2 - scr_x - 1, bs(6.5) + 3 * i - 0.8, board_w + pcb_t + 0.5]) cube([wall + 3, 1.6, 8]);
 		// M3 pilot holes in the bosses, from the back
 		for (b = boss_xy()) translate([b[0], b[1], -1]) cylinder(d = 2.6, h = 13);
@@ -190,12 +209,14 @@ module back() {
 			for (h = pcb_holes) {
 				s = bs(h[1]);
 				w_wall = (depth_top + s * sin(tilt)) / cos(tilt);    // where the post meets the plate
-				in_face() translate([bu(h[0]), s, board_w + pcb_t]) {
-					cylinder(d = 6, h = w_wall - board_w - pcb_t + 1);
-					translate([0, 0, -pcb_t + 0.2]) cylinder(d = 2.8, h = pcb_t);   // pin in the board's hole
+				in_face() translate([bu(h[0]), s, board_w + post_from]) {
+					cylinder(d = post_d, h = w_wall - board_w - post_from + 1);
+					translate([0, 0, -min(post_from, 2.5) + 0.2]) cylinder(d = hole_d - 0.4, h = min(post_from, 2.5));   // pin in the hole
 				}
 			}
 		}
+		// the lip makes way for the USB cable's notch
+		if (guition) translate([cable_x - 4, wall - 1, -0.01]) cube([8, 4, 2.1]);
 		// clear of the bosses, and countersunk screws into them
 		for (b = boss_xy()) translate([b[0], b[1], 0]) {
 			linear_extrude(3) boss_shape(0.4);
@@ -212,27 +233,33 @@ module back() {
 
 // ── stand-ins for the pictures ───────────────────────────────────────────
 module panel() in_face() translate([-panel_w / 2, top_margin, wall]) cube([panel_w, panel_h, panel_t - 0.4]);
-// The board with its tallest parts (and on the Sunton, the plugs in P1 and P4), and
-// the buzzer and LED modules.
+// The board with its tallest parts (and the plugs in it), and the buzzer and LED modules.
 module pcb() {
 	in_face() {
 		translate([bu(pcb_w), bs(0), board_w]) cube([pcb_w, pcb_h, pcb_t]);
-		on_board = sunton
-			? [[26.1, 16, 25.5, 18, 3.2],        // ESP32 module
+		on_board = pick(
+			  [[98.4, 15.9, 5.5, 34.1, 18],      // 2x13 header with Dupont plugs on it
+			   [92, 24.6, 8, 28, 12]],           // right-angle USB-C plug in the full-speed port
+			  [[26.1, 16, 25.5, 18, 3.2],        // ESP32 module
 			   [124, 29.3, 8.5, 9, 3.3],         // USB-C
 			   [129, 47.5, 11, 6.5, 4.5],        // P1 with its plug, out past the edge
-			   [112, 70, 7.2, 10, 4.5]]          // P4 with its plug, out past the bottom
-			: [[59, -6, 18, 25.5, 3.2]];         // ESP32 module, antenna over the top edge
+			   [112, 70, 7.2, 10, 4.5]],         // P4 with its plug, out past the bottom
+			  [[59, -6, 18, 25.5, 3.2]]);        // ESP32 module, antenna over the top edge
 		for (p = on_board) translate([bu(p[0]), bs(p[1]), board_w + pcb_t]) cube([p[2], p[3], p[4]]);
+		// the Guition's mounting ears, at its corners
+		if (guition) for (h = pcb_holes) translate([bu(h[0]), bs(h[1]), board_w]) difference() {
+			translate([-2.5, -2.5, 0]) cube([5, 5, post_from]);
+			translate([0, 0, -1]) cylinder(d = hole_d, h = post_from + 2);
+		}
 	}
-	if (sunton) {
+	if (!mainboard) {
 		translate([scr_x + buzz_xz[0] - 11, wall, buzz_xz[1] - 7.5]) cube([22, 9.6, 15]);   // buzzer down
 		in_mouth() translate([led_u - 5, 6, wall]) cube([10, 10, 3]);                    // LED facing the slit
 	}
 }
 module scanner() in_mouth() {
 	m0 = (mouth_len - sf_d) / 2;
-	translate([-0.73 * sf_w, m0, wall + module_h + 0.5]) cube([sf_w, sf_d, pcb_t]);
+	translate([-0.73 * sf_w, m0, wall + module_h + 0.5]) cube([sf_w, sf_d, sf_t]);
 	translate([-11, mouth_len / 2 - 10.75, wall + 0.5]) cube([22, 21.5, module_h]);
 }
 

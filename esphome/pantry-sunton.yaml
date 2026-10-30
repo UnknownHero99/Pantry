@@ -1,0 +1,147 @@
+# Pantry wall scanner on the Sunton ESP32-8048S043C, the earlier board choice
+# (pantry-scanner.yaml is the Guition ESP32-P4 board).
+#   Sunton ESP32-8048S043C (ESP32-S3, 4.3" 800x480, GT911 capacitive touch)
+#   + a barcode scanner, a buzzer module and a WS2812 LED module on its two
+#     1.25 mm 4-pin connectors. No custom board needed.
+#
+# Wiring (Sunton connector → module):
+#   P1 (GND, RXD, TXD, 5V)       → scanner: GND, TX, RX; 5V for a GM65 / GM861
+#   P4 (GND, 3.3V, IO17, IO18)   → 3.3V for the SparkFun DE2120 scanner, the LED and
+#                                  the buzzer; IO17 → LED DIN, IO18 → buzzer I/O
+# GPIO43/44 (P1) is also the USB serial, so unplug the scanner for the very first
+# USB flash; after that, update over Wi-Fi (OTA).
+#
+# Scanner setup (scan the config barcodes in its manual once):
+#   UART output, 9600 baud, continuous/induction mode, add CR suffix.
+#
+# This file is the hardware; the screens live in pantry-ui.yaml (+ pantry_ui.h).
+# No hardware yet? pantry-sim.yaml runs the same screens in a desktop window.
+
+substitutions:
+  name: pantry-scanner
+  server: http://192.168.10.10:5190   # pantry app, reachable from this VLAN
+  location: Pantry                     # where this unit hangs; used for products with no usual place yet
+  scanner_baud: "9600"                 # GM65 default; set the SparkFun DE2120 to 9600 too, or change this
+
+esphome:
+  name: ${name}
+  friendly_name: Pantry scanner
+
+# The buzzer and status LED, and the screens (shared with pantry-sim.yaml).
+# No buzzer or LED? Drop feedback. With the scanner carrier board
+# (hardware/scanner-carrier), replace feedback with carrier.
+packages:
+  feedback: !include
+    file: pantry-feedback.yaml
+    vars: { buzzer_pin: GPIO18, buzzer_inverted: "true", led_pin: GPIO17, led_chipset: WS2812 }
+  # carrier: !include pantry-carrier.yaml
+  ui: !include pantry-ui.yaml
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: y
+      CONFIG_ESP32S3_DATA_CACHE_64KB: y
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+# UART0 belongs to the scanner; logs are still available over Wi-Fi.
+logger:
+  baud_rate: 0
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_key
+
+# OTA uses the API encryption key.
+ota:
+  - platform: esphome
+
+# The clock comes from Home Assistant, so the IoT VLAN needs no internet.
+time:
+  - platform: homeassistant
+    id: ha_time
+
+# ── hardware ────────────────────────────────────────────────────────────
+
+uart:
+  - id: scanner_uart
+    tx_pin: GPIO43
+    rx_pin: GPIO44
+    baud_rate: ${scanner_baud}
+    debug:
+      direction: RX
+      dummy_receiver: true
+      after:
+        delimiter: "\r"
+        timeout: 100ms   # also works if the CR suffix isn't enabled
+      sequence:
+        - lambda: |-
+            std::string code;
+            for (auto b : bytes) if (b > 32 && b < 127) code += (char) b;
+            if (!code.empty()) id(handle_scan)->execute(code);
+
+output:
+  - platform: ledc
+    pin: GPIO2
+    id: backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: Backlight
+    id: backlight
+    restore_mode: ALWAYS_ON
+    default_transition_length: 300ms
+
+# GPIO19/20 would clash with native USB-JTAG, but this board's USB goes
+# through a CH340 on UART0 instead, so ESPHome's warning about them is moot.
+i2c:
+  sda: GPIO19
+  scl: GPIO20
+
+touchscreen:
+  - platform: gt911
+    id: touch
+    display: main_display
+    on_touch:
+      - script.execute: wake
+
+display:
+  - platform: rpi_dpi_rgb
+    id: main_display
+    color_order: RGB
+    invert_colors: true
+    update_interval: never
+    auto_clear_enabled: false
+    dimensions:
+      width: 800
+      height: 480
+    de_pin: GPIO40
+    hsync_pin: GPIO39
+    vsync_pin: GPIO41
+    pclk_pin: GPIO42
+    pclk_frequency: 16MHz
+    pclk_inverted: true
+    hsync_pulse_width: 4
+    hsync_front_porch: 8
+    hsync_back_porch: 8
+    vsync_pulse_width: 4
+    vsync_front_porch: 8
+    vsync_back_porch: 8
+    data_pins:
+      red: [GPIO45, GPIO48, GPIO47, GPIO21, GPIO14]
+      green: [GPIO5, GPIO6, GPIO7, GPIO15, GPIO16, GPIO4]
+      blue: [GPIO8, GPIO3, GPIO46, GPIO9, GPIO1]
