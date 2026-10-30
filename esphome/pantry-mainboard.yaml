@@ -28,7 +28,10 @@ esphome:
 packages:
   feedback: !include
     file: pantry-feedback.yaml
-    vars: { buzzer_pin: GPIO2, buzzer_inverted: "false", led_pin: GPIO1, led_chipset: SK6812 }
+    vars: { led_pin: GPIO1, led_chipset: SK6812 }
+  buzzer: !include
+    file: pantry-buzzer.yaml
+    vars: { buzzer_pin: GPIO2, buzzer_inverted: "false" }
   ui: !include pantry-ui.yaml
 
 esp32:

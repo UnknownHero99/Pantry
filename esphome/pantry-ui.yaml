@@ -1380,7 +1380,7 @@ script:
             - script.execute: fetch_summary
 
   # Beep / light for a scan: out, in, undo, lookup, unknown, empty, box, error, offline.
-  # Nothing by default; pantry-carrier.yaml (the carrier board's buzzer and LED) fills it in.
+  # Nothing by default; pantry-feedback.yaml (status LED and scan sounds) fills it in.
   - id: feedback
     parameters: { kind: string }
     then:

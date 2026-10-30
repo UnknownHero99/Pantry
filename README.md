@@ -155,13 +155,13 @@ has the listings, quantities and the small stuff.
 |---|---|
 | Guition **JC4880P443C** (ESP32-P4 + ESP32-C6 for Wi-Fi, 4.3" 480×800 IPS used in landscape, GT911 capacitive touch) | ~€34 |
 | **GROW GM67** barcode module (1D + 2D, red aiming light, 5 V, TTL UART; comes with its cables). The [enclosure](hardware/enclosure) is made for it; a GM65 or the SparkFun breakout works with the same firmware. | ~€18 + shipping |
-| **Passive buzzer module**, 3-pin (I/O, VCC, GND) with a transistor | ~€1 |
+| **Speaker**, 8 Ω 1–2 W, round 28 mm × 5 mm, with a 1.25 mm 2-pin plug: it plugs into the board's own amplifier | ~€2.50 |
 | **WS2812B LED module**, a single LED (DIN, VCC, GND) | ~€1 |
-| A 1.25 mm 4-pin pigtail for CN2, six female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | ~€5 |
+| A 1.25 mm 4-pin pigtail for CN2, three female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | ~€5 |
 | [3D-printed case](hardware/enclosure) (or any wall box) | |
 
-The buzzer and LED are optional: without them, drop the `feedback` package from
-`pantry-scanner.yaml`.
+The speaker and LED are optional: without them, drop the `feedback` package and the
+speaker section from `pantry-scanner.yaml`.
 
 ### Wiring
 
@@ -171,19 +171,18 @@ The buzzer and LED are optional: without them, drop the `feedback` package from
 | **CN2** pin 2 `TX` (GPIO37) | GM67 pin 3 `RX` |
 | **CN2** pin 3 `RX` (GPIO38) | GM67 pin 2 `TX` |
 | **CN2** pin 4 `GND` | GM67 pin 4 `GND` |
-| **JP1** (2×13 header) pins **1, 3, 5**: 3.3 V, GND, GPIO52 | buzzer VCC, GND, I/O |
-| **JP1** pins **2, 4, 6**: 3.3 V, GND, GPIO33 | LED VCC, GND, DIN |
+| **Speaker socket** (1.25 mm 2-pin, on the board's top edge) | speaker |
+| **JP1** (2×13 header) pins **2, 4, 6**: 3.3 V, GND, GPIO33 | LED VCC, GND, DIN |
 
 Both 4-pin connectors have the same pin order, so **TX and RX must cross**: a straight
 cable between them won't work. Join a 1.25 mm pigtail from CN2 to the GM67's own UART cable
 with pins 2 and 3 swapped (solder and heat-shrink). The GM67's UART socket is the one
 marked UART, next to the USB one.
 
-Each module takes three neighbouring header pins, so it's one 3-pin Dupont plug and no
-splicing. The LED runs on 3.3 V so its data input sees a full-level signal; WS2812B LEDs are
-rated from 3.5 V but work at 3.3 V. The buzzer module's transistor usually switches on when
-I/O is **low** (an 8550 / 9012 PNP), which is what `buzzer_inverted: "true"` expects. If
-yours is silent or hisses when idle, set it to `"false"`.
+The LED takes three neighbouring header pins, so it's one 3-pin Dupont plug and no
+splicing. It runs on 3.3 V so its data input sees a full-level signal; WS2812B LEDs are
+rated from 3.5 V but work at 3.3 V. The speaker is driven by the board's ES8311 audio chip
+and amplifier (enabled on GPIO11); the scan sounds are the same tunes a buzzer would play.
 
 Flashing and logs go over the USB-C marked **full speed** (the ESP32-P4's USB
 Serial/JTAG), so the scanner keeps UART0 and can stay plugged in.
@@ -201,7 +200,7 @@ Using the configuration barcodes in the scanner's manual (the
 [GM67 manual](https://makerselectronics.com/wp-content/uploads/2026/07/GM67-Barcode-Reader-Module-User-Manual-V1.3.pdf)):
 **serial (UART) output, 9600 baud, induction/continuous mode, add CR suffix**, and make
 sure QR codes are enabled. The GM67 also beeps by itself on every read; its **silent mode**
-leaves the beeping to the buzzer module, which sounds different for each result.
+leaves the beeping to the speaker, which sounds different for each result.
 (Or keep its baud rate and change `scanner_baud` in `pantry-scanner.yaml`.)
 
 ### Flash
@@ -218,7 +217,7 @@ v3.0 it's an early chip: set `engineering_sample: "true"` in `pantry-scanner.yam
 flash again. After that, update over Wi-Fi.
 
 Or use the ESPHome dashboard in Home Assistant: copy `pantry-scanner.yaml`,
-`pantry-ui.yaml` (the screens), `pantry-feedback.yaml` (buzzer and LED) and `pantry_ui.h`
+`pantry-ui.yaml` (the screens), `pantry-feedback.yaml` (LED and scan sounds) and `pantry_ui.h`
 into its config folder. The board shows up in HA with a backlight light
 and a "Last scan" sensor, and takes its clock from HA, so it needs no internet.
 

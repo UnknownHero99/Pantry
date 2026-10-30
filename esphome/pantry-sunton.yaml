@@ -28,12 +28,15 @@ esphome:
   friendly_name: Pantry scanner
 
 # The buzzer and status LED, and the screens (shared with pantry-sim.yaml).
-# No buzzer or LED? Drop feedback. With the scanner carrier board
-# (hardware/scanner-carrier), replace feedback with carrier.
+# No buzzer or LED? Drop feedback and buzzer. With the scanner carrier board
+# (hardware/scanner-carrier), replace both with carrier.
 packages:
   feedback: !include
     file: pantry-feedback.yaml
-    vars: { buzzer_pin: GPIO18, buzzer_inverted: "true", led_pin: GPIO17, led_chipset: WS2812 }
+    vars: { led_pin: GPIO17, led_chipset: WS2812 }
+  buzzer: !include
+    file: pantry-buzzer.yaml
+    vars: { buzzer_pin: GPIO18, buzzer_inverted: "true" }
   # carrier: !include pantry-carrier.yaml
   ui: !include pantry-ui.yaml
 

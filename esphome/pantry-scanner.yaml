@@ -1,24 +1,24 @@
 # Pantry wall scanner
 #   Guition JC4880P443C (ESP32-P4, with an ESP32-C6 for Wi-Fi; 4.3" 480x800 IPS
 #   turned to landscape, GT911 capacitive touch)
-#   + a GROW GM67 barcode scanner, a buzzer module and a WS2812 LED module on the
+#   + a GROW GM67 barcode scanner, a small speaker and a WS2812 LED module on the
 #     board's own connectors. No custom board needed.
 #
 # Wiring (board connector → module):
 #   CN2 "UART0", 1.25 mm 4-pin (VIN, TX GPIO37, RX GPIO38, GND)
 #                         → GM67 UART (5V, TX, RX, GND): same pin order, so cross
 #                           TX and RX (CN2 pin 2 → GM67 pin 3, pin 3 → pin 2)
-#   JP1, the 2x13 2.54 mm header (each module on three neighbouring pins):
-#     pins 1, 3, 5:  3.3V, GND, GPIO52 → buzzer: VCC, GND, I/O
+#   Speaker socket, 1.25 mm 2-pin  → an 8 ohm 1-2 W speaker (the board's ES8311 audio
+#                                    chip and amplifier drive it)
+#   JP1, the 2x13 2.54 mm header:
 #     pins 2, 4, 6:  3.3V, GND, GPIO33 → LED: VCC, GND, DIN
 #     pins 16, 14:   3.3V, GND         → a SparkFun scanner's 3V3 instead (it runs on 3.3 V)
-#   (GPIO52 is an Ethernet pin on paper; this board has no Ethernet chip.)
 # Flash and logs go over the USB-C marked full speed (USB Serial/JTAG), so UART0
 # is the scanner's and the scanner can stay plugged in.
 #
 # Scanner setup (scan the config barcodes in its manual once):
 #   UART output, 9600 baud, continuous/induction mode, add CR suffix; silent mode,
-#   since the buzzer module does the beeping.
+#   since the speaker does the beeping.
 #
 # This file is the hardware; the screens live in pantry-ui.yaml (+ pantry_ui.h).
 # No hardware yet? pantry-sim.yaml runs the same screens in a desktop window.
@@ -39,12 +39,12 @@ esphome:
   name: ${name}
   friendly_name: Pantry scanner
 
-# The buzzer and status LED, and the screens (shared with pantry-sim.yaml).
-# No buzzer or LED? Drop feedback.
+# The status LED and scan sounds, and the screens (shared with pantry-sim.yaml).
+# No LED or speaker? Drop feedback, and the speaker section below.
 packages:
   feedback: !include
     file: pantry-feedback.yaml
-    vars: { buzzer_pin: GPIO52, buzzer_inverted: "true", led_pin: GPIO33, led_chipset: WS2812 }
+    vars: { led_pin: GPIO33, led_chipset: WS2812 }
   ui: !include pantry-ui.yaml
 
 # Added to the lvgl: block in pantry-ui.yaml.
@@ -148,6 +148,39 @@ i2c:
   sda: GPIO7
   scl: GPIO8
   frequency: 400kHz
+
+# ── speaker: the board's ES8311 audio chip and amplifier ────────────────
+# pantry-feedback.yaml's scan sounds play here.
+
+i2s_audio:
+  - id: i2s_bus
+    i2s_mclk_pin: GPIO13
+    i2s_bclk_pin: GPIO12
+    i2s_lrclk_pin: GPIO10
+
+audio_dac:
+  - platform: es8311
+    id: codec
+
+speaker:
+  - platform: i2s_audio
+    id: speaker_out
+    i2s_audio_id: i2s_bus
+    i2s_dout_pin: GPIO9
+    dac_type: external
+    audio_dac: codec
+
+# The amplifier's enable pin; on all the time, it only draws a little while silent.
+switch:
+  - platform: gpio
+    id: speaker_amp
+    pin: GPIO11
+    restore_mode: ALWAYS_ON
+    internal: true
+
+rtttl:
+  speaker: speaker_out
+  gain: 60%
 
 # Polled: sources disagree on the touch controller's reset and interrupt pins
 # (GPIO22/21 in the schematic notes, GPIO3 in a working config), so neither is used.

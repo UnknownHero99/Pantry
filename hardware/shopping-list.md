@@ -8,14 +8,14 @@ and the option to pick matter more than the link.
 |---|---|---|---|---|
 | **Guition JC4880P443C**, 4.3" ESP32-P4 display board, [Guition Store](https://www.aliexpress.com/item/1005009621821443.html) | 1 | `JC4880P443C-I-W` (capacitive, no shell) | €34.40 (€32.00 in the 11.11 sale) | free |
 | **GROW GM67** barcode module, [listing](https://www.aliexpress.com/item/1005007150284044.html) (346 sold); also [this one](https://www.aliexpress.com/item/1005005353980674.html) (€17.75) or [this one](https://www.aliexpress.com/item/4000873144062.html) (€18.55) | 1 | comes with its USB and UART cables | €18.36 (€15.06 in the sale) | not checked |
-| **Passive buzzer module**, 3-pin with transistor, [YX Electronic Components](https://www.aliexpress.com/item/1005005528181661.html) | 1 | `passive Buzzer` | €1.13 | free over €15 in this store |
-| **WS2812B single LED**, [same store](https://www.aliexpress.com/item/1005007580679026.html) | 1 | `1 bit` | €1.19 | as above |
+| **Speaker**, 8 Ω 1 W, 28 mm round, 5 mm thick, with a 1.25 mm 2-pin plug, [listing](https://www.aliexpress.com/item/32947549129.html) | 1 (pair) | 28 mm, 1.25 mm terminal | €4.68 for two | free over €15 |
+| **WS2812B single LED**, [YX Electronic Components](https://www.aliexpress.com/item/1005007580679026.html) | 1 | `1 bit` | €1.19 | free over €15 in this store |
 | **MX1.25 4-pin pigtail**, single plug, [listing](https://www.aliexpress.com/item/1005007277110532.html) | 1 (pack of 10) | 4 pin, 10 or 15 cm | from €1.58 | free over €15 |
-| **Dupont jumper wires**, female to female, 10 cm, [listing](https://www.aliexpress.com/item/32825558073.html) | 6 (a 40-wire strip) | female–female, 10 cm | from €1.05 | |
+| **Dupont jumper wires**, female to female, 10 cm, [listing](https://www.aliexpress.com/item/32825558073.html) | 3 (a 40-wire strip) | female–female, 10 cm | from €1.05 | |
 | **Right-angle USB-C cable**: USB-A to C, 90° plug on the C end, [listing](https://www.aliexpress.com/item/1005008645902348.html) | 1 | 1 m or longer, to reach the socket | from €2.53 | |
 | **M3 × 8 self-tapping screws**, pan head, [listing](https://www.aliexpress.com/item/4000982209705.html) | 4 | M3 × 8 | from €0.83 | free over €15 |
 
-**Total:** about **€61**, plus shipping for the GM67 and anything under a store's €15
+**Total:** about **€65**, plus shipping for the GM67 and anything under a store's €15
 free-shipping line. Put it all in one cart: AliExpress shows the delivered total there.
 Prices drop on 1 November for the 11.11 sale.
 

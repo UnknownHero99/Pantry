@@ -2,7 +2,7 @@
 
 A printable case in the style of a shop price checker (like the Champtek SG-15), for the
 Guition JC4880P443C (ESP32-P4) display board as it comes, a GROW GM67 barcode scanner,
-and a buzzer module and a WS2812B LED module. No custom board. (For the Sunton, the
+a small speaker and a WS2812B LED module. No custom board. (For the Sunton, the
 optional [mainboard](../mainboard) or the SparkFun scanner, see
 [Other boards and scanners](#other-boards-and-scanners).)
 
@@ -11,9 +11,9 @@ optional [mainboard](../mainboard) or the SparkFun scanner, see
 | | |
 |---|---|
 | ![Side](renders/side.png) | ![From below](renders/below.png) |
-| The screen face tilts up 15° toward you | The scanner looks down and forward through the bevelled "mouth"; the slit beside it is the status light, the vents in the floor are the buzzer's |
+| The screen face tilts up 15° toward you | The scanner looks down and forward through the bevelled "mouth"; the slit beside it is the status light, the round grille in the floor is the speaker's |
 | ![Inside](renders/inside.png) | ![Exploded](renders/exploded.png) |
-| Inside, back plate off: the board behind its screen with the plugs on its header and USB-C, the scanner in the mouth, the LED and buzzer modules | Back plate: keyholes, and posts that hold the board by its mounting ears |
+| Inside, back plate off: the board behind its screen with the plugs on its header and USB-C, the scanner in the mouth, the LED module and the speaker on the floor | Back plate: keyholes, and posts that hold the board by its mounting ears |
 
 Outside about **122 wide × 148 high × 59 deep** (mm, including the back plate).
 
@@ -54,9 +54,10 @@ screws with heads up to 8 mm, thin double-sided foam tape, a little hot glue, a
    Plug its UART cable in first: there's room for the plug at the far end, not for fingers.
 3. **LED module**: hot-glue it inside the mouth over the slit left of the scanner window,
    LED facing the slit.
-4. **Buzzer module**: hot-glue it on the floor, buzzer down over the five vents (right of
-   centre, seen from the front).
-5. **Wires**: the scanner's to CN2 "UART0", the LED's and buzzer's to the header.
+4. **Speaker**: drop it into the ring on the floor, cone down over the round grille (right
+   of centre, seen from the front), and fix it with a dab of hot glue. Its lead goes up to
+   the speaker socket on the board's top edge.
+5. **Wires**: the scanner's to CN2 "UART0", the LED's to the header.
 6. **USB**: the board's USB-C ports face backwards, so plug a right-angle USB-C cable into
    the one marked full speed and lay its cable down to the notch at the back of the floor
    (left of centre). It leaves the case there and hangs down the wall.
@@ -70,7 +71,8 @@ it lies on two pegs in the mouth, and the case is 3 mm shallower.
 
 `board` at the top of [pantry-scanner.scad](pantry-scanner.scad) also takes:
 
-- `"sunton"`: the Sunton ESP32-8048S043C with the same modules. 138 mm wide: its board
+- `"sunton"`: the Sunton ESP32-8048S043C, with a buzzer module on the floor over five
+  vents instead of the speaker. 138 mm wide: its board
   is wider than its screen, and its USB-C and P1 face the left wall with room for P1's
   plug, so the screen sits 4.5 mm right of centre. USB-C goes through the left wall.
   [stl/sunton-shell.stl](stl/sunton-shell.stl), [stl/sunton-back.stl](stl/sunton-back.stl).
@@ -84,7 +86,7 @@ it lies on two pegs in the mouth, and the case is 3 mm shallower.
 
 [pantry-scanner.scad](pantry-scanner.scad) is parametric OpenSCAD: the board, the panel's
 size and thickness, the room beside the board, the screen tilt, the mouth's angle, chin
-height, depth, corner radii and where the scanner, LED and buzzer go are variables at the
+height, depth, corner radii and where the scanner, LED and speaker go are variables at the
 top. Then:
 
 ```bash

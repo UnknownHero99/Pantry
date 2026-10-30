@@ -2,9 +2,9 @@
 // you, an arrow under it points to the scanner in a bevelled "mouth" that looks down
 // and forward, where you hold the product. For a GROW GM67 barcode scanner (or the
 // SparkFun 2D Barcode Scanner: `scanner`) and one of these (`board`):
-//   guition   - the Guition JC4880P443C (ESP32-P4) as it comes, plus a buzzer module
-//               and a WS2812 LED module. No custom board.
-//   sunton    - the Sunton ESP32-8048S043C, with the same modules.
+//   guition   - the Guition JC4880P443C (ESP32-P4) as it comes, plus a small speaker
+//               (on the board's own amplifier) and a WS2812 LED module. No custom board.
+//   sunton    - the Sunton ESP32-8048S043C, with a buzzer module and the LED module.
 //   mainboard - hardware/mainboard behind a bare 4.3" 800x480 capacitive panel.
 //
 // Two printed parts:
@@ -147,6 +147,9 @@ module shell() {
 		union() {
 			difference() { outer(); cavity(); }
 			bosses();
+			// a ring on the floor that holds the speaker over its grille
+			if (guition) translate([scr_x + spk_xz[0], wall - 0.01, spk_xz[1]]) rotate([-90, 0, 0])
+				linear_extrude(3) difference() { circle(d = spk_d + 0.6 + 2.4); circle(d = spk_d + 0.6); }
 			// GM67: two rails with a groove for the board's edges. Ahead of the engine's
 			// back only the screen side of the groove, so the engine fits between them.
 			if (gm67) in_mouth() for (side = [-1, 1]) difference() {
@@ -187,9 +190,12 @@ module shell() {
 			for (d = [-2.75, 2.75]) translate([0, d, 0]) cylinder(d = 7.5, h = wall + 3);
 		// the Guition's USB-C faces back: a right-angle plug's cable leaves through the floor
 		if (guition) translate([cable_x - 3.5, -1, -1]) cube([7, wall + 2, 7]);
-		// buzzer vents: in the floor under the buzzer module, or in the left wall beside
-		// the mainboard's buzzer (board 88, 6.5)
-		if (!mainboard) for (i = [-2:2]) translate([scr_x + buzz_xz[0] + 3 * i - 0.8, -1, buzz_xz[1] - 5]) cube([1.6, wall + 2, 10]);
+		// sound: a round grille in the floor under the Guition's speaker, vents in the
+		// floor under the Sunton's buzzer module, or in the left wall beside the
+		// mainboard's buzzer (board 88, 6.5)
+		if (guition) for (i = [-3:3]) let(l = 2 * sqrt(pow(spk_d / 2 - 3, 2) - pow(3 * i, 2)))
+			translate([scr_x + spk_xz[0] + 3 * i - 0.8, -1, spk_xz[1] - l / 2]) cube([1.6, wall + 2, l]);
+		if (sunton) for (i = [-2:2]) translate([scr_x + buzz_xz[0] + 3 * i - 0.8, -1, buzz_xz[1] - 5]) cube([1.6, wall + 2, 10]);
 		else in_face() for (i = [-2:2]) translate([-W / 2 - scr_x - 1, bs(6.5) + 3 * i - 0.8, board_w + pcb_t + 0.5]) cube([wall + 3, 1.6, 8]);
 		// M3 pilot holes in the bosses, from the back
 		for (b = boss_xy()) translate([b[0], b[1], -1]) cylinder(d = 2.6, h = 13);
@@ -198,6 +204,8 @@ module shell() {
 
 led_u = -40;                  // status LED slit, across the mouth
 buzz_xz = [40, 13];           // buzzer module on the floor: right of the screen's centre, out from the back
+spk_d = 28; spk_t = 5;        // the Guition's speaker: round, 8 ohm, on a 1.25 mm 2-pin lead
+spk_xz = [36, 16.5];          // on the floor, cone down, in a ring: right of the screen's centre, out from the back
 
 // Screw bosses: top corners just below the top bevel, bottom corners above the floor.
 // They sink 0.3 mm into the side walls: only touching them leaves a non-manifold edge.
@@ -233,8 +241,9 @@ module back() {
 				}
 			}
 		}
-		// the lip makes way for the USB cable's notch
+		// the lip makes way for the USB cable's notch and the speaker's ring
 		if (guition) translate([cable_x - 4, wall - 1, -0.01]) cube([8, 4, 2.1]);
+		if (guition) translate([scr_x + spk_xz[0] - spk_d / 2 - 3, wall - 1, -0.01]) cube([spk_d + 6, 5, 2.1]);
 		// clear of the bosses, and countersunk screws into them
 		for (b = boss_xy()) translate([b[0], b[1], 0]) {
 			linear_extrude(3) boss_shape(0.4);
@@ -251,7 +260,7 @@ module back() {
 
 // ── stand-ins for the pictures ───────────────────────────────────────────
 module panel() in_face() translate([-panel_w / 2, top_margin, wall]) cube([panel_w, panel_h, panel_t - 0.4]);
-// The board with its tallest parts (and the plugs in it), and the buzzer and LED modules.
+// The board with its tallest parts (and the plugs in it), and the sound and LED modules.
 module pcb() {
 	in_face() {
 		translate([bu(pcb_w), bs(0), board_w]) cube([pcb_w, pcb_h, pcb_t]);
@@ -270,8 +279,9 @@ module pcb() {
 			translate([0, 0, -1]) cylinder(d = hole_d, h = post_from + 2);
 		}
 	}
+	if (guition) translate([scr_x + spk_xz[0], wall, spk_xz[1]]) rotate([-90, 0, 0]) cylinder(d = spk_d, h = spk_t);   // speaker
+	if (sunton) translate([scr_x + buzz_xz[0] - 11, wall, buzz_xz[1] - 7.5]) cube([22, 9.6, 15]);   // buzzer down
 	if (!mainboard) {
-		translate([scr_x + buzz_xz[0] - 11, wall, buzz_xz[1] - 7.5]) cube([22, 9.6, 15]);   // buzzer down
 		in_mouth() translate([led_u - 5, 6, wall]) cube([10, 10, 3]);                    // LED facing the slit
 	}
 }

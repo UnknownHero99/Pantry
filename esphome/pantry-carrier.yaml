@@ -1,6 +1,6 @@
 # The scanner carrier board (hardware/scanner-carrier): buzzer and status LED
-# for the wall scanner on the Sunton. To use it, swap it for the feedback package
-# in pantry-sunton.yaml:
+# for the wall scanner on the Sunton. To use it, swap it for the feedback and
+# buzzer packages in pantry-sunton.yaml:
 #
 #   packages:
 #     carrier: !include pantry-carrier.yaml
@@ -11,4 +11,7 @@
 packages:
   feedback: !include
     file: pantry-feedback.yaml
-    vars: { buzzer_pin: GPIO18, buzzer_inverted: "false", led_pin: GPIO17, led_chipset: WS2812 }
+    vars: { led_pin: GPIO17, led_chipset: WS2812 }
+  buzzer: !include
+    file: pantry-buzzer.yaml
+    vars: { buzzer_pin: GPIO18, buzzer_inverted: "false" }
