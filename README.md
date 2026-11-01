@@ -149,17 +149,18 @@ Labels encode `PNTRY:I:000123`. The wall scanner and phone camera both read them
 
 ### Parts
 
-Everything is off the shelf; no custom board needed. Prices are AliExpress, delivered to
-Slovenia, VAT included (October 2026); [hardware/shopping-list.md](hardware/shopping-list.md)
-has the listings, quantities and the small stuff.
+Everything is off the shelf; no custom board needed. Prices are delivered to Slovenia
+with VAT and the EU's per-item import charges (about €6.10 an item from China, November
+2026). [hardware/shopping-list.md](hardware/shopping-list.md) has the listings and says
+which parts to buy locally instead, because the charge is several times their price.
 
 | | |
 |---|---|
-| Guition **JC4880P443C** (ESP32-P4 + ESP32-C6 for Wi-Fi, 4.3" 480×800 IPS used in landscape, GT911 capacitive touch) | ~€34 |
-| **GROW GM67** barcode module (1D + 2D, red aiming light, 5 V, TTL UART; comes with its cables). The [enclosure](hardware/enclosure) is made for it; a GM65 or the SparkFun breakout works with the same firmware. | ~€23 |
-| **Speaker**, 8 Ω 1–2 W, round 28 mm × 5 mm, with a 1.25 mm 2-pin plug on a lead of 15 cm or more: it plugs into the board's own amplifier | ~€2 |
+| Guition **JC4880P443C** (ESP32-P4 + ESP32-C6 for Wi-Fi, 4.3" 480×800 IPS used in landscape, GT911 capacitive touch) | ~€38 |
+| **GROW GM67** barcode module (1D + 2D, red aiming light, 5 V, TTL UART; comes with its cables). The [enclosure](hardware/enclosure) is made for it; a GM65 or the SparkFun breakout works with the same firmware. | ~€25 |
+| **Speaker**, 8 Ω 1–2 W, round 28 mm × 5 mm, with a 1.25 mm 2-pin plug on a lead of 15 cm or more: it plugs into the board's own amplifier | ~€10 |
 | **WS2812B LED module**, a single LED (DIN, VCC, GND) | ~€1 |
-| A 1.25 mm 4-pin pigtail for CN2, three female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | ~€5 |
+| A 1.25 mm 4-pin pigtail for CN2 (~€9), three female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | ~€15 |
 | [3D-printed case](hardware/enclosure) (or any wall box) | |
 
 The speaker and LED are optional: without them, drop the `feedback` package and the
