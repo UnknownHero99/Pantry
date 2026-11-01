@@ -25,6 +25,8 @@ export async function lookup(code) {
 		if (!name) return null;
 		return {
 			name: name.trim(),
+			// lookup.js swaps in a Slovenian name from Veš kaj ješ when this isn't one.
+			slovenian: !!p.product_name_sl,
 			brand: p.brands?.split(',')[0]?.trim() || null,
 			// Drop the EU estimated-quantity mark: "400 g e" / "400 g ℮".
 			size: p.quantity?.replace(/\s*[e℮]$/, '').trim() || null,

@@ -6,7 +6,9 @@ know what you have.
 
 - **Store-bought:** scan the product's own barcode (EAN/UPC). Name, brand and photo
   come from Open Food Facts, or for cleaners, toilet paper and toiletries from its
-  sister databases Open Products Facts and Open Beauty Facts. Packs of the same
+  sister databases Open Products Facts and Open Beauty Facts. Slovenian names come
+  from [Veš, kaj ješ?](https://veskajjes.si) (ZPS), which is asked at the same time
+  and also covers products Open Food Facts doesn't know. Packs of the same
   product are counted together.
 - **Home-made** (harvest, bulk meat, meal prep): *Pack & label* prints one QR label per
   package on a Bluetooth cat printer. Each package keeps its own weight, packed date
@@ -114,7 +116,7 @@ card. Tabs: Stock · Shop · **Scan** (the big middle button) · Pack · More.
 | **Scan** | Camera (+ torch, + type a code), TAKE OUT / PUT AWAY (falls back after 2 min, like the wall), result card with −/+, undo, fix count, the trip list |
 | **Pack** | Home-made goods: recent products as chips, packs × amount, where, use-by chips, live label preview → print |
 | **Product** | Count per place, packages, details. An unknown barcode (the wall's QR code lands here) opens as a quick *name it* form |
-| **More → Inbox** | Barcodes the Open Food Facts databases didn't know |
+| **More → Inbox** | Barcodes neither Open Food Facts nor Veš kaj ješ knew |
 | **More → History** | By day, filter wall / phones / count issues, undo any of them |
 | **More → Settings** | Locations, printer darkness + test print |
 

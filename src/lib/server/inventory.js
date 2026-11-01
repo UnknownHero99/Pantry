@@ -1,6 +1,7 @@
 import { db, tx, IMG_DIR } from './db.js';
 import { bus } from './bus.js';
-import { lookup, saveImage } from './off.js';
+import { lookup } from './lookup.js';
+import { saveImage } from './off.js';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { scheduleHaSync } from './ha.js';
@@ -9,7 +10,7 @@ import { parseItemCode, parseBoxCode, itemCode, amount, ago, daysUntil, shortDat
 
 const q = (sql) => db.prepare(sql);
 
-/** Products whose Open Food Facts lookup is still running in the background. */
+/** Products whose barcode lookup is still running in the background. */
 const lookingUp = new Set();
 
 /** Tell open PWAs to refresh and push both shopping lists to HA. */
@@ -251,7 +252,7 @@ export function mergeProduct(fromId, intoId) {
 }
 
 /**
- * Retry Open Food Facts for an inbox placeholder — the first lookup may have
+ * Retry the lookup for an inbox placeholder — the first lookup may have
  * timed out rather than found nothing.
  */
 export async function relookup(id) {
@@ -346,7 +347,7 @@ function img(p) {
  * still lands in the fridge.
  *
  * `async_lookup`: the wall unit can't redraw while it waits for a reply, so it
- * asks for a new barcode's Open Food Facts lookup to run in the background and
+ * asks for a new barcode's lookup to run in the background and
  * polls GET /api/scan/<event_id> while the reply says status "lookup".
  */
 export async function scan({ code, mode, device, location, default_location, async_lookup }) {
