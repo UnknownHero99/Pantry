@@ -163,8 +163,10 @@ which parts to buy locally instead, because the charge is several times their pr
 | A 1.25 mm 4-pin pigtail for CN2 (~€9), three female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | ~€15 |
 | [3D-printed case](hardware/enclosure) (or any wall box) | |
 
-The speaker and LED are optional: without them, drop the `feedback` package and the
-speaker section from `pantry-scanner.yaml`.
+The speaker and LED are optional. Without the speaker, the GM67's own beep confirms each
+read (leave its silent mode off), and the firmware can stay as it is: the sounds just play
+to nothing. Without both, drop the `feedback` package and the speaker section from
+`pantry-scanner.yaml`.
 
 ### Wiring
 
@@ -203,7 +205,8 @@ Using the configuration barcodes in the scanner's manual (the
 [GM67 manual](https://makerselectronics.com/wp-content/uploads/2026/07/GM67-Barcode-Reader-Module-User-Manual-V1.3.pdf)):
 **serial (UART) output, 9600 baud, induction/continuous mode, add CR suffix**, and make
 sure QR codes are enabled. The GM67 also beeps by itself on every read; its **silent mode**
-leaves the beeping to the speaker, which sounds different for each result.
+leaves the beeping to the speaker, which sounds different for each result. With no
+speaker, leave silent mode off.
 (Or keep its baud rate and change `scanner_baud` in `pantry-scanner.yaml`.)
 
 ### Flash
