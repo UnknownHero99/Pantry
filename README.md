@@ -46,8 +46,10 @@ The phone app: Pantry stock, the Garage, one box, the shopping list, packing and
 
 ```bash
 cp .env.example .env     # set ORIGIN, optionally HA_*
-docker compose up -d --build
+docker compose pull && docker compose up -d
 ```
+
+Every push to `master` builds `ghcr.io/unknownhero99/pantry:latest` (amd64 + arm64) in GitHub Actions. To run your own checkout instead, use `docker compose up -d --build`.
 
 Data (SQLite DB + cached product photos) lives in `./data` → `/data` in the container.
 

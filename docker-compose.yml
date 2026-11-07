@@ -1,5 +1,7 @@
 services:
   pantry:
+    # GitHub Actions publishes this on every push to master; `--build` builds it from this checkout instead.
+    image: ${PANTRY_IMAGE:-ghcr.io/unknownhero99/pantry:latest}
     build: .
     container_name: pantry
     restart: unless-stopped
