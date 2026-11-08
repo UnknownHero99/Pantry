@@ -142,7 +142,7 @@ lvgl:
               - obj: { id: status_dot, width: 10, height: 10, radius: 5, bg_opa: COVER, bg_color: 0x5CC46E }
               - label: { id: lbl_status, text: "${location}", text_font: f18, text_color: 0xA0A0A0 }
 
-        # ── status bar in put-away mode: teal band + drain bar ───────────
+        # ── status bar in put-away mode: tomato title + a thin drain bar ──
         - obj:
             id: sb_putaway
             x: 0
@@ -152,17 +152,17 @@ lvgl:
             pad_left: 20
             pad_right: 20
             bg_opa: COVER
-            bg_color: 0x0F8579
-            text_color: 0xFFFFFF
+            bg_color: 0x282828
+            text_color: 0xFF8A72
             hidden: true
             scrollable: false
             layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 12 }
             widgets:
               - label: { text: "\U000F005D", text_font: i28 }
               - label: { text: "PUTTING AWAY", text_font: f22b, text_letter_space: 1 }
-              - label: { id: lbl_pa_count, text: "", text_font: f20, text_color: 0xC4ECE6 }
+              - label: { id: lbl_pa_count, text: "", text_font: f20, text_color: 0xA0A0A0 }
               - obj: { flex_grow: 1, height: 1 }
-              - label: { id: lbl_pa_timer, text: "", text_font: f18, text_color: 0xC4ECE6, recolor: true }
+              - label: { id: lbl_pa_timer, text: "", text_font: f18, text_color: 0xA0A0A0, recolor: true }
               - bar:
                   id: bar_pa
                   floating: true
@@ -175,11 +175,11 @@ lvgl:
                   value: 120
                   radius: 0
                   bg_opa: COVER
-                  bg_color: 0x0B6159
+                  bg_color: 0x383838
                   anim_duration: 1s
                   indicator:
                     radius: 0
-                    bg_color: 0xFFFFFF
+                    bg_color: 0xFF8A72
 
         # ── stage: one card (+ banner) on the left, a side panel on the right
         - obj:
@@ -217,7 +217,7 @@ lvgl:
                           - label: { id: home_title, text: "Scan to take out", text_font: f44b, width: 100%, long_mode: WRAP }
                           - label:
                               id: home_hint
-                              text: "Unpacking shopping? Tap #5FD3C6 Put away# first."
+                              text: "Unpacking shopping? Tap #FF8A72 Put away# first."
                               recolor: true
                               width: 100%
                               long_mode: WRAP
@@ -300,7 +300,7 @@ lvgl:
                                           widgets:
                                             - label: { text: "USE BY", text_font: f15b, text_letter_space: 1, text_color: 0xA0A0A0 }
                                             - label: { id: lbl_useby, text: "" }
-                                - label: { id: res_text, text: "", width: 100%, long_mode: WRAP, text_font: f18, text_color: 0xF0C2C6, hidden: true }
+                                - label: { id: res_text, text: "", width: 100%, long_mode: WRAP, text_font: f18, text_color: 0xF5BFD0, hidden: true }
                                 - obj: { flex_grow: 1, width: 1 }
                                 - obj:
                                     id: count_row
@@ -358,9 +358,9 @@ lvgl:
                                           radius: 14
                                           bg_opa: TRANSP
                                           border_width: 2
-                                          border_color: 0x6A3439
+                                          border_color: 0x6A3046
                                           widgets:
-                                            - label: { text: "Ignore", align: CENTER, text_font: f22b, text_color: 0xF0C2C6 }
+                                            - label: { text: "Ignore", align: CENTER, text_font: f22b, text_color: 0xF5BFD0 }
                                           on_click:
                                             - script.execute: show_idle
                           # Drains while the result is up, then the screen goes home.
@@ -389,10 +389,10 @@ lvgl:
                         flex_grow: 1
                         hidden: true
                         bg_opa: COVER
-                        bg_color: 0x1F3436
+                        bg_color: 0x282828
                         radius: 20
                         border_width: 3
-                        border_color: 0x2F5B58
+                        border_color: 0x6A3428
                         pad_left: 28
                         pad_right: 28
                         scrollable: false
@@ -403,19 +403,19 @@ lvgl:
                               height: 64
                               spin_time: 1s
                               arc_length: 90deg
-                              arc_color: 0x2A4949
+                              arc_color: 0x4A2A24
                               arc_width: 5
                               indicator:
-                                arc_color: 0x5FD3C6
+                                arc_color: 0xFF8A72
                                 arc_width: 5
                           - label: { text: "Looking it up…", text_font: f36b }
-                          - label: { id: lbl_lookup_code, text: "", text_font: f22b, text_letter_space: 2, text_color: 0xC6E6E1 }
+                          - label: { id: lbl_lookup_code, text: "", text_font: f22b, text_letter_space: 2, text_color: 0xFFDCD3 }
                           - label:
                               text: "First time we've seen this barcode. Asking Open Food Facts for its name and photo. Keep scanning, it's already counted."
                               width: 100%
                               long_mode: WRAP
                               text_font: f18
-                              text_color: 0xA5C4C0
+                              text_color: 0xD9AEA5
 
                     # Not in the food database: QR opens it on the phone to name it
                     - obj:
@@ -477,23 +477,23 @@ lvgl:
                         flex_grow: 1
                         hidden: true
                         bg_opa: COVER
-                        bg_color: 0x3A2124
+                        bg_color: 0x3A1F2A
                         radius: 20
                         border_width: 3
-                        border_color: 0xF2646F
+                        border_color: 0xEA4F7F
                         pad_left: 26
                         pad_right: 26
                         scrollable: false
                         layout: { type: flex, flex_flow: column, flex_align_main: center, pad_row: 12 }
                         widgets:
-                          - label: { text: "\U000F05AA", text_font: i64, text_color: 0xF2646F }
+                          - label: { text: "\U000F05AA", text_font: i64, text_color: 0xEA4F7F }
                           - label: { text: "Can't reach the pantry", text_font: f36b, width: 100%, long_mode: WRAP }
                           - label:
                               text: "Keep scanning. Scans are saved on this scanner and sent automatically when the server is back."
                               width: 100%
                               long_mode: WRAP
-                              text_color: 0xF0C2C6
-                          - label: { id: lbl_retry, text: "", text_font: f18, text_color: 0xD49AA0 }
+                              text_color: 0xF5BFD0
+                          - label: { id: lbl_retry, text: "", text_font: f18, text_color: 0xD995AD }
 
                     # UNDO: this scanner's recent scans, tap one to reverse it
                     - obj:
@@ -693,20 +693,20 @@ lvgl:
                   height: 100%
                   hidden: true
                   bg_opa: COVER
-                  bg_color: 0x1B2D2F
+                  bg_color: 0x282828
                   radius: 18
                   pad_all: 14
                   pad_left: 16
                   pad_right: 16
                   scrollable: false
                   widgets:
-                    - label: { id: list_title, text: "THIS TRIP", text_font: f15b, text_letter_space: 1, text_color: 0x7FA5A0 }
+                    - label: { id: list_title, text: "THIS TRIP", text_font: f15b, text_letter_space: 1, text_color: 0xA0A0A0 }
                     - label: { id: list_n, align: TOP_RIGHT, text: "", text_font: f15b }
-                    - obj: { id: row0, y: 26, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
-                    - obj: { id: row1, y: 62, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
-                    - obj: { id: row2, y: 98, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
-                    - obj: { id: row3, y: 134, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
-                    - obj: { id: row4, y: 170, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
+                    - obj: { id: row0, y: 26, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x383838, hidden: true }
+                    - obj: { id: row1, y: 62, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x383838, hidden: true }
+                    - obj: { id: row2, y: 98, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x383838, hidden: true }
+                    - obj: { id: row3, y: 134, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x383838, hidden: true }
+                    - obj: { id: row4, y: 170, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x383838, hidden: true }
                     - label: { id: row0_name, y: 33, width: 150, long_mode: DOT, text: "", text_font: f18 }
                     - label: { id: row1_name, y: 69, width: 150, long_mode: DOT, text: "", text_font: f18 }
                     - label: { id: row2_name, y: 105, width: 150, long_mode: DOT, text: "", text_font: f18 }
@@ -717,7 +717,7 @@ lvgl:
                     - label: { id: row2_n, y: 105, align: TOP_RIGHT, text: "", text_font: f18 }
                     - label: { id: row3_n, y: 141, align: TOP_RIGHT, text: "", text_font: f18 }
                     - label: { id: row4_n, y: 177, align: TOP_RIGHT, text: "", text_font: f18 }
-                    - label: { id: list_foot, align: BOTTOM_LEFT, width: 100%, long_mode: WRAP, text: "", text_font: f15, recolor: true, text_color: 0x7FA5A0 }
+                    - label: { id: list_foot, align: BOTTOM_LEFT, width: 100%, long_mode: WRAP, text: "", text_font: f15, recolor: true, text_color: 0xA0A0A0 }
 
         # ── bottom bar: mode switch + undo ───────────────────────────────
         - obj:
@@ -814,13 +814,13 @@ script:
           show(id(sb_normal), !in);
           show(id(sb_putaway), in);
           bg(id(main_page)->obj, in ? col::BG_IN : col::BG);
-          bg(id(seg), in ? 0x1A2B2D : 0x282828);
-          border(id(seg), in ? 0x2C4B4C : 0x404040);
-          bg(id(btn_takeout), in ? 0x1A2B2D : col::TEXT);
+          bg(id(seg), 0x282828);
+          border(id(seg), 0x404040);
+          bg(id(btn_takeout), in ? 0x282828 : col::TEXT);
           fg(id(btn_takeout), in ? 0xCFCFCC : col::BG);
-          bg(id(btn_putaway), in ? col::BLUE : 0x282828);
-          fg(id(btn_putaway), in ? 0xFFFFFF : col::BLUE_TEXT);
-          bg(id(side_list), in ? col::SIDE_IN : 0x2A1A1C);
+          bg(id(btn_putaway), in ? col::TEXT : 0x282828);
+          fg(id(btn_putaway), in ? col::BG : col::BLUE_TEXT);
+          bg(id(side_list), in ? col::SIDE_IN : 0x2A1820);
           lv_bar_set_value(id(bar_pa), 120, LV_ANIM_OFF);
       - script.execute: paint_undo
 
@@ -828,7 +828,7 @@ script:
     then:
       - lambda: |-
           using namespace pantry;
-          bool in = id(mode_in), on = id(online), open = id(undo_open);
+          bool on = id(online), open = id(undo_open);
           text(id(undo_icon), open ? "\U000F0156" : "\U000F054C");
           text(id(undo_label), open ? "CLOSE" : "UNDO");
           if (open) {
@@ -837,9 +837,9 @@ script:
             fg(id(btn_undo), col::BG);
             return;
           }
-          bg(id(btn_undo), on ? (in ? 0x1A2B2D : 0x282828) : (in ? col::BG_IN : col::BG));
-          border(id(btn_undo), on ? (in ? 0x2C4B4C : 0x404040) : (in ? 0x21393A : 0x383838));
-          fg(id(btn_undo), on ? 0xCFCFCC : (in ? 0x3F625F : 0x585858));
+          bg(id(btn_undo), on ? 0x282828 : col::BG);
+          border(id(btn_undo), on ? 0x404040 : 0x383838);
+          fg(id(btn_undo), on ? 0xCFCFCC : 0x585858);
 
   # Home stage: "Scan to take out" + tiles, or "Scan as you put away" + trip.
   - id: show_idle
@@ -856,8 +856,8 @@ script:
           show(id(home_icon), in);
           fg(id(home_icon), col::BLUE_TEXT);
           text(id(home_title), in ? "Scan each item as you put it away" : "Scan to take out");
-          text(id(home_hint), in ? "Bought several of the same? Scan one, then tap #5FD3C6 +#."
-                                 : "Unpacking shopping? Tap #5FD3C6 Put away# first.");
+          text(id(home_hint), in ? "Bought several of the same? Scan one, then tap #FF8A72 +#."
+                                 : "Unpacking shopping? Tap #FF8A72 Put away# first.");
           if (!in) id(undo_event) = 0;
           id(fix_event) = 0;
       - script.execute: paint_undo
@@ -881,9 +881,9 @@ script:
           lv_obj_t *rows[] = {id(row0), id(row1), id(row2), id(row3), id(row4)};
           std::string foot;
           if (off) {
-            bg(id(side_list), 0x2A1A1C);
+            bg(id(side_list), 0x2A1820);
             text(id(list_title), "WAITING TO SEND");
-            fg(id(list_title), 0xD49AA0);
+            fg(id(list_title), 0xD995AD);
             text(id(list_n), std::to_string(queue.size()));
             size_t n = queue.size();
             for (int i = 0; i < 5; i++) {
@@ -895,13 +895,13 @@ script:
               fg(names[i], col::TEXT);
               text(nums[i], q.in ? "in" : "out");
               fg(nums[i], q.in ? col::BLUE_TEXT : col::RED_TEXT);
-              border(rows[i], 0x4A2A2F);
+              border(rows[i], 0x4A2634);
             }
             if (n > 5) foot = "+ " + std::to_string(n - 5) + " more";
           } else {
             bg(id(side_list), col::SIDE_IN);
             text(id(list_title), "THIS TRIP");
-            fg(id(list_title), 0x7FA5A0);
+            fg(id(list_title), 0xA0A0A0);
             text(id(list_n), "");
             size_t n = trip.size();
             for (int i = 0; i < 5; i++) {
@@ -909,17 +909,17 @@ script:
               show(rows[i], has); show(names[i], has); show(nums[i], has);
               if (!has) continue;
               auto &t = trip[i];
-              uint32_t c = t.status == "unknown" ? col::AMBER : t.status == "lookup" ? 0x7FA5A0 : col::GREEN;
+              uint32_t c = t.status == "unknown" ? col::AMBER : t.status == "lookup" ? 0xA0A0A0 : col::GREEN;
               text(names[i], t.name);
               fg(names[i], t.status == "ok" ? col::TEXT : c);
               text(nums[i], "+" + std::to_string(t.units));
               fg(nums[i], c);
-              border(rows[i], 0x25403F);
+              border(rows[i], 0x383838);
             }
             if (n == 0) foot = "Nothing yet.";
             if (n > 5) foot = "+ " + std::to_string(n - 5) + " more";
             else if (!summary.low.empty())
-              foot += std::string(foot.empty() ? "" : "\n") + "Still on the list:\n#C6E6E1 " + join(summary.low, ", ", 4) + "#";
+              foot += std::string(foot.empty() ? "" : "\n") + "Still on the list:\n#CFCFCC " + join(summary.low, ", ", 4) + "#";
           }
           text(id(list_foot), foot);
 
@@ -970,7 +970,7 @@ script:
           bool empty = r.status == "empty";
           bool box = r.status == "box";   // a garage box label: nothing moves, open it on the phone
           show(id(res_card), true);
-          bg(id(res_card), ok || box ? (in ? col::CARD_IN : col::CARD) : 0x3A2124);
+          bg(id(res_card), ok || box ? (in ? col::CARD_IN : col::CARD) : 0x3A1F2A);
           border(id(res_card), box ? col::BLUE : ok ? (undo ? col::DIM : col::GREEN) : col::RED);
 
           uint32_t chip = box ? col::BLUE_TEXT : ok ? (undo ? col::MUTED : col::GREEN) : col::RED_TEXT;
@@ -1026,8 +1026,8 @@ script:
           show(id(btn_minus), stepper);
           show(id(btn_plus), stepper);
           text(id(lbl_more), r.mode == "in" ? "Bought\nmore?" : "Took\nmore?");
-          bg(id(btn_minus), in ? 0x2A4949 : 0x404040);
-          bg(id(btn_plus), in ? col::BLUE : 0x484848);
+          bg(id(btn_minus), 0x404040);
+          bg(id(btn_plus), 0x484848);
 
           show(id(empty_row), empty && r.event_id > 0);
           show(id(bar_return), !in && ok);
@@ -1045,13 +1045,13 @@ script:
             fg(id(banner_sub), 0xECD0A0);
           } else if (ok && !undo && !r.older.empty()) {
             show(id(banner), true);
-            bg(id(banner), 0x1D3133);
+            bg(id(banner), 0x33221F);
             text(id(banner_icon), "\U000F0150");
             fg(id(banner_icon), col::BLUE_TEXT);
             text(id(banner_title), "Older pack waiting: " + r.older);
-            fg(id(banner_title), 0xC0EAE4);
+            fg(id(banner_title), 0xFFD6CC);
             text(id(banner_sub), "use that one next");
-            fg(id(banner_sub), 0x98C3BE);
+            fg(id(banner_sub), 0xD4A69C);
           }
       - script.execute: paint_undo
       - script.execute: paint_side
@@ -1250,7 +1250,7 @@ script:
             auto &r = recent[i];
             uint32_t c = r.in ? col::BLUE_TEXT : 0xCFCFCC;
             // The newest is the one you most likely meant, so it stands out.
-            bg(rows[i], in ? (i == 0 ? 0x2A4949 : 0x223B3C) : (i == 0 ? 0x303030 : 0x303030));
+            bg(rows[i], i == 0 ? 0x383838 : 0x303030);
             text(icons[i], r.in ? "\U000F005D" : "\U000F0045");
             fg(icons[i], c);
             text(names[i], r.title);

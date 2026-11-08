@@ -15,11 +15,12 @@ namespace pantry {
 // ── colours: the app's, with greys on the 16-bit screen's neutral steps ──
 
 namespace col {
-constexpr uint32_t BG = 0x202020, BG_IN = 0x18272A;
-constexpr uint32_t CARD = 0x282828, CARD_IN = 0x1F3436, SIDE_IN = 0x1B2D2F;
+// Put away looks like take out; only the band title, its line and the arrows show the accent.
+constexpr uint32_t BG = 0x202020, BG_IN = 0x202020;
+constexpr uint32_t CARD = 0x282828, CARD_IN = 0x282828, SIDE_IN = 0x282828;
 constexpr uint32_t TEXT = 0xF2F1EE, MUTED = 0xB0B0B0, DIM = 0xA0A0A0, FAINT = 0x686868;
-constexpr uint32_t GREEN = 0x5CC46E, AMBER = 0xF2AC44, RED = 0xF2646F, RED_TEXT = 0xFF9AA3;
-constexpr uint32_t BLUE = 0x0F8579, BLUE_TEXT = 0x5FD3C6;  // teal now; the names stay
+constexpr uint32_t GREEN = 0x5CC46E, AMBER = 0xF2AC44, RED = 0xEA4F7F, RED_TEXT = 0xFF8FB0;
+constexpr uint32_t BLUE = 0xCC4329, BLUE_TEXT = 0xFF8A72;  // the tomato accent now; the names stay
 }  // namespace col
 
 // ── tiny LVGL helpers ────────────────────────────────────────────────────

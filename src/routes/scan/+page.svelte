@@ -199,12 +199,12 @@
 <style>
 	.band {
 		position: relative; margin: 0 -16px; padding: 10px 16px; display: flex; align-items: center; gap: 8px;
-		background: var(--accent); color: #fff; font-size: 14px;
+		background: var(--surface-2); color: var(--accent-text); font-size: 14px;
 	}
 	.band svg { width: 20px; height: 20px; }
 	.band b { letter-spacing: 1px; font-size: 15px; }
-	.band span { color: #c4ece6; }
+	.band span { color: var(--muted); }
 	.band .t { margin-left: auto; }
-	.band .t b { color: #fff; letter-spacing: 0; }
-	.band .drain { position: absolute; left: 0; bottom: 0; height: 3px; background: #fff; transition: width 1s linear; }
+	.band .t b { color: var(--ink); letter-spacing: 0; }
+	.band .drain { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent-text); transition: width 1s linear; }
 </style>

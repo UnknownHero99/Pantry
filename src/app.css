@@ -1,7 +1,8 @@
 /* Pantry design system.
    Neutral charcoal (never black) and light grey, so the colour comes from the
-   things on the shelves. One teal, the logo's scan line, for actions and
-   "put away"; amber for "needs attention", green for done, red for trouble.
+   things on the shelves. One tomato red, the logo's can and scan line, for
+   actions; amber for "needs attention", green for done, and a cooler
+   crimson-rose for trouble so it isn't mistaken for the accent.
    Built for one hand in the kitchen: 44 px+ targets everywhere.
    Light mode redefines the tokens only. */
 
@@ -15,21 +16,22 @@
 	--ink-2: #cfcfcc;
 	--muted: #9c9ea3;
 
-	--accent: #0f8579;          /* fills: buttons, Scan, put-away band; white text on it */
+	--accent: #cc4329;          /* fills: buttons, Scan; white text on it */
 	--accent-ink: #ffffff;
-	--accent-text: #5fd3c6;     /* links, active tab, selected */
-	--accent-soft: rgba(48, 196, 180, 0.15);
-	--putaway-bg: #18272a;
-	--putaway-card: #1f3436;
-	--putaway-line: #2c4b4c;
+	--accent-text: #ff8a72;     /* links, active tab, selected */
+	--accent-soft: rgba(238, 106, 82, 0.16);
+	/* Putting away doesn't tint the page; the band and the selected mode say it. */
+	--putaway-bg: var(--bg);
+	--putaway-card: var(--surface);
+	--putaway-line: var(--surface-3);
 
 	--good: #5cc46e;
 	--warn: #f2ac44;
 	--warn-bg: #3a2f1c;
 	--warn-ink: #ecd0a0;
-	--bad: #f2646f;
-	--bad-bg: #3a2124;
-	--bad-ink: #f0c2c6;
+	--bad: #ea4f7f;
+	--bad-bg: #3a1f2a;
+	--bad-ink: #f5bfd0;
 
 	--nav-bg: #232427;
 	--r-sm: 12px;
@@ -50,19 +52,16 @@
 		--ink-2: #404246;
 		--muted: #6c6e73;
 
-		--accent-text: #0b7066;
-		--accent-soft: rgba(15, 133, 121, 0.11);
-		--putaway-bg: #e5f3f1;
-		--putaway-card: #ffffff;
-		--putaway-line: #bfe2dd;
+		--accent-text: #b8391f;
+		--accent-soft: rgba(204, 67, 41, 0.1);
 
 		--good: #2a8a3c;
 		--warn: #a86400;
 		--warn-bg: #fdf0d9;
 		--warn-ink: #774700;
-		--bad: #c2334d;
-		--bad-bg: #fbe9eb;
-		--bad-ink: #8a1f33;
+		--bad: #b8234f;
+		--bad-bg: #fbe8ee;
+		--bad-ink: #8a1838;
 
 		--nav-bg: #ffffff;
 		--shadow: 0 6px 18px rgb(20 20 25 / 0.12);
@@ -170,14 +169,13 @@ h1.page { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height
 	border: 0; border-radius: 10px; background: transparent; color: var(--ink-2);
 	font: inherit; font-size: 15px; cursor: pointer; text-align: center; text-decoration: none;
 }
-/* Selected looks the same everywhere: a soft teal tint with an outline. */
+/* Selected looks the same everywhere: a soft accent tint with an outline. */
 .seg > .on, .seg > label:has(input:checked) { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent-text); font-weight: 700; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 /* Places across spaces: the space small on top, the place below ("Kitchen / Freezer"). */
 .seg > label.two { height: 52px; display: flex; flex-direction: column; justify-content: center; line-height: 1.15; }
 .seg > label.two small { font-size: 11px; opacity: 0.7; font-weight: 500; }
 .seg.mode > button { height: 48px; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
-.seg.mode > button.in.on { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
 .putting-away .seg.mode { background: var(--putaway-card); box-shadow: inset 0 0 0 1.5px var(--putaway-line); }
 
 /* ── product rows ────────────────────────────────────────────────────── */
@@ -327,7 +325,7 @@ details > summary::-webkit-details-marker { display: none; }
 .nav a.scan { color: var(--ink); font-weight: 700; margin-top: -30px; }
 .nav a.scan .fab {
 	width: 58px; height: 58px; border-radius: 29px; background: var(--accent); color: #fff;
-	display: grid; place-items: center; box-shadow: 0 6px 18px rgba(15, 133, 121, 0.45);
+	display: grid; place-items: center; box-shadow: 0 6px 18px rgba(204, 67, 41, 0.4);
 }
 .nav a.scan .fab svg { width: 28px; height: 28px; }
 .nav a.scan.on { color: var(--accent-text); }
@@ -398,7 +396,6 @@ details > summary::-webkit-details-marker { display: none; }
 .result .text { font-size: 14px; color: var(--ink-2); }
 .result .stepper { background: none; padding: 0; }
 .result .stepper button { width: 46px; height: 46px; }
-.putting-away .result .stepper button:last-child { background: var(--accent); color: #fff; }
 .banner { display: flex; align-items: center; gap: 12px; border-radius: 14px; padding: 12px 14px; font-size: 14px; }
 .banner svg { width: 26px; height: 26px; flex: none; }
 .banner.warn { background: var(--warn-bg); color: var(--warn-ink); }

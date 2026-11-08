@@ -223,9 +223,9 @@
 	.code-tile.small { width: 40px; height: 40px; border-radius: 10px; font-size: 13px; }
 	.acts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin-top: 14px; }
 	.fill { margin-top: 14px; background: var(--putaway-card); border-radius: 18px; padding: 0 14px 14px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
-	.fill .band { margin: 0 -14px; padding: 10px 14px; background: var(--accent); color: #fff; font-size: 14px; display: flex; gap: 6px; }
+	.fill .band { margin: 0 -14px; padding: 10px 14px; background: var(--surface-2); color: var(--accent-text); font-size: 14px; display: flex; gap: 6px; }
 	.fill .band b { letter-spacing: 1px; }
-	.fill .band span { color: #c4ece6; }
+	.fill .band span { color: var(--muted); }
 	.snap { position: relative; width: 72px; height: 72px; flex: none; border-radius: 14px; background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); overflow: hidden; cursor: pointer; }
 	.snap svg { width: 30px; height: 30px; }
 	.snap img { width: 100%; height: 100%; object-fit: cover; }
