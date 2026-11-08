@@ -6,7 +6,9 @@
  * them, which keeps the "it's queued" state visible to you.
  */
 
-const CACHE = 'pantry-v1';
+// Icons are served from this cache without asking the server, so bump the
+// version whenever they change: the new worker drops the old cache.
+const CACHE = 'pantry-v2';
 const ASSETS = ['/icons/app-192.png', '/icons/app-512.png'];
 
 self.addEventListener('install', (event) => {
