@@ -203,7 +203,7 @@
 	}
 	.band svg { width: 20px; height: 20px; }
 	.band b { letter-spacing: 1px; font-size: 15px; }
-	.band span { color: #d6e6ff; }
+	.band span { color: #c4ece6; }
 	.band .t { margin-left: auto; }
 	.band .t b { color: #fff; letter-spacing: 0; }
 	.band .drain { position: absolute; left: 0; bottom: 0; height: 3px; background: #fff; transition: width 1s linear; }

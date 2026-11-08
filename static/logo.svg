@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+	<!-- Pantry: a can, a jar and a bottle on a shelf, in a scanner's viewfinder.
+	     The app icons in static/icons/ are rendered from this file. -->
+	<rect width="64" height="64" rx="14" fill="#26282c" />
+	<g id="mark">
+		<path d="M8 18v-6a4 4 0 0 1 4-4h6M46 8h6a4 4 0 0 1 4 4v6M56 46v6a4 4 0 0 1-4 4h-6M18 56h-6a4 4 0 0 1-4-4v-6" fill="none" stroke="#f1ede6" stroke-width="3.5" stroke-linecap="round" />
+		<!-- can -->
+		<rect x="15" y="27" width="10" height="18" rx="2" fill="#e5533c" />
+		<rect x="15" y="27" width="10" height="2.2" rx="1" fill="#c23f2b" />
+		<rect x="15" y="42.8" width="10" height="2.2" rx="1" fill="#c23f2b" />
+		<rect x="15" y="32" width="10" height="5" fill="#f1ede6" opacity="0.6" />
+		<!-- jar -->
+		<rect x="28.5" y="21.5" width="9" height="4.5" rx="1.5" fill="#f28c28" />
+		<rect x="27" y="25.5" width="12" height="19.5" rx="4" fill="#f2c12e" />
+		<rect x="29.5" y="31" width="7" height="6" rx="1" fill="#f1ede6" opacity="0.6" />
+		<!-- bottle -->
+		<rect x="44" y="16.5" width="3.5" height="3" rx="1" fill="#2f8a4c" />
+		<path d="M44 19.5h3.5v5l2 3.5V45H42V28l2-3.5z" fill="#3fa65f" />
+		<!-- shelf and scan line -->
+		<path d="M12 47.5h40" stroke="#f1ede6" stroke-width="3" stroke-linecap="round" />
+		<path d="M10 36h44" stroke="#22b3a6" stroke-width="2.5" stroke-linecap="round" />
+	</g>
+</svg>

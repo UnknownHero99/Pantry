@@ -161,6 +161,9 @@
 {/snippet}
 
 <div class="head wide">
+	<!-- On the phone: the logo and name, with the space switcher as a pill. On a PC
+	     they're in the sidebar, and the space name is the page heading. -->
+	<a class="brand phone-brand" href="/" aria-label="Pantry"><img src="/logo.svg" alt="" /><span class="wordmark">pantry</span></a>
 	<button class="space-pick" onclick={openPicker} aria-haspopup="dialog">
 		{space?.name}
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
@@ -326,9 +329,21 @@
 <style>
 	.space-pick {
 		width: auto; min-height: 44px; padding: 0; background: none; color: var(--ink);
-		font-size: 30px; font-weight: 700; letter-spacing: -0.5px; gap: 6px;
+		font-size: 30px; font-weight: 700; letter-spacing: -0.5px; gap: 6px; margin-right: auto;
 	}
 	.space-pick svg { width: 22px; height: 22px; color: var(--muted); }
+	.phone-brand img { width: 30px; height: 30px; }
+	.phone-brand .wordmark { font-size: 22px; }
+	@media (max-width: 959px) {
+		.head { align-items: center; }
+		.head .aside { display: none; }
+		.space-pick {
+			margin: 0 0 0 auto; min-height: 38px; padding: 0 10px 0 14px; border-radius: 999px;
+			background: var(--surface-2); font-size: 15px; font-weight: 700; letter-spacing: 0;
+		}
+		.space-pick svg { width: 16px; height: 16px; }
+	}
+	@media (min-width: 960px) { .phone-brand { display: none; } }
 	.allgood { display: flex; align-items: center; gap: 8px; margin: 10px 2px 0; font-size: 14px; color: var(--muted); }
 	.allgood svg { width: 18px; height: 18px; flex: none; color: var(--good); }
 	.tiles.one .tile { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; }

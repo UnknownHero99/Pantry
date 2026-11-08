@@ -225,7 +225,7 @@
 	.fill { margin-top: 14px; background: var(--putaway-card); border-radius: 18px; padding: 0 14px 14px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
 	.fill .band { margin: 0 -14px; padding: 10px 14px; background: var(--accent); color: #fff; font-size: 14px; display: flex; gap: 6px; }
 	.fill .band b { letter-spacing: 1px; }
-	.fill .band span { color: #d6e6ff; }
+	.fill .band span { color: #c4ece6; }
 	.snap { position: relative; width: 72px; height: 72px; flex: none; border-radius: 14px; background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); overflow: hidden; cursor: pointer; }
 	.snap svg { width: 30px; height: 30px; }
 	.snap img { width: 100%; height: 100%; object-fit: cover; }

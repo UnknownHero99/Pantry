@@ -1,73 +1,86 @@
 /* Pantry design system.
-   Same family as the wall scanner: dark first, big numbers, one blue for
-   "put away", amber for "needs attention", green for done, red for trouble.
+   Neutral charcoal (never black) and light grey, so the colour comes from the
+   things on the shelves. One teal, the logo's scan line, for actions and
+   "put away"; amber for "needs attention", green for done, red for trouble.
    Built for one hand in the kitchen: 44 px+ targets everywhere.
    Light mode redefines the tokens only. */
 
 :root {
-	--bg: #0e1116;
-	--surface: #171b22;
-	--surface-2: #1c2129;
-	--surface-3: #262c37;
-	--border: #232a36;
-	--ink: #f1f3f7;
-	--ink-2: #c9d0db;
-	--muted: #8c95a5;
+	--bg: #1d1e21;
+	--surface: #26282c;         /* the logo's tile */
+	--surface-2: #2f3135;
+	--surface-3: #3a3d42;
+	--border: #34363b;
+	--ink: #f2f1ee;
+	--ink-2: #cfcfcc;
+	--muted: #9c9ea3;
 
-	--accent: #1f6fd1;          /* fills: buttons, put-away band */
+	--accent: #0f8579;          /* fills: buttons, Scan, put-away band; white text on it */
 	--accent-ink: #ffffff;
-	--accent-text: #6fb0ff;     /* links, active tab */
-	--accent-soft: rgba(79, 143, 240, 0.16);
-	--putaway-bg: #0b1626;
-	--putaway-card: #13233a;
-	--putaway-line: #23354f;
+	--accent-text: #5fd3c6;     /* links, active tab, selected */
+	--accent-soft: rgba(48, 196, 180, 0.15);
+	--putaway-bg: #18272a;
+	--putaway-card: #1f3436;
+	--putaway-line: #2c4b4c;
 
-	--good: #2fbf71;
-	--warn: #f0a43a;
-	--warn-bg: #2a2112;
-	--warn-ink: #e3c493;
-	--bad: #f05a6a;
-	--bad-bg: #2a1519;
-	--bad-ink: #e7b9bf;
+	--good: #5cc46e;
+	--warn: #f2ac44;
+	--warn-bg: #3a2f1c;
+	--warn-ink: #ecd0a0;
+	--bad: #f2646f;
+	--bad-bg: #3a2124;
+	--bad-ink: #f0c2c6;
 
-	--nav-bg: #12161d;
+	--nav-bg: #232427;
 	--r-sm: 12px;
 	--r: 16px;
 	--r-lg: 20px;
-	--shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+	--shadow: 0 6px 18px rgb(0 0 0 / 0.3);
 	color-scheme: dark;
 }
 
 @media (prefers-color-scheme: light) {
 	:root:not([data-theme='dark']) {
-		--bg: #f4f6f9;
+		--bg: #f3f3f1;
 		--surface: #ffffff;
-		--surface-2: #eef1f6;
-		--surface-3: #e3e8f0;
-		--border: #dde2eb;
-		--ink: #10141c;
-		--ink-2: #3d4556;
-		--muted: #6b7385;
+		--surface-2: #ebebe8;
+		--surface-3: #dfdfdb;
+		--border: #dcdcd8;
+		--ink: #1b1c1e;
+		--ink-2: #404246;
+		--muted: #6c6e73;
 
-		--accent-text: #1f6fd1;
-		--accent-soft: rgba(31, 111, 209, 0.12);
-		--putaway-bg: #eaf1fc;
+		--accent-text: #0b7066;
+		--accent-soft: rgba(15, 133, 121, 0.11);
+		--putaway-bg: #e5f3f1;
 		--putaway-card: #ffffff;
-		--putaway-line: #c9d9f2;
+		--putaway-line: #bfe2dd;
 
-		--good: #0b8a4b;
-		--warn: #b06a00;
-		--warn-bg: #fff3df;
-		--warn-ink: #7a4a00;
+		--good: #2a8a3c;
+		--warn: #a86400;
+		--warn-bg: #fdf0d9;
+		--warn-ink: #774700;
 		--bad: #c2334d;
-		--bad-bg: #fdeaed;
+		--bad-bg: #fbe9eb;
 		--bad-ink: #8a1f33;
 
 		--nav-bg: #ffffff;
-		--shadow: 0 6px 18px rgb(16 20 35 / 0.12);
+		--shadow: 0 6px 18px rgb(20 20 25 / 0.12);
 		color-scheme: light;
 	}
 }
+
+/* The wordmark: Comfortaa Bold, only the letters of "pantry" (static/fonts, SIL OFL). */
+@font-face {
+	font-family: 'Comfortaa';
+	font-weight: 700;
+	font-display: block;
+	src: url('/fonts/comfortaa-pantry.woff2') format('woff2');
+	unicode-range: U+61, U+6E, U+70, U+72, U+74, U+79;
+}
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); }
+.brand img { width: 32px; height: 32px; flex: none; }
+.wordmark { font-family: 'Comfortaa', system-ui, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.3px; line-height: 1; }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -140,8 +153,8 @@ h1.page { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height
 	font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
 }
 .chip .n { color: var(--muted); }
-.chip.on { background: var(--ink); color: var(--bg); font-weight: 700; }
-.chip.on .n { color: inherit; opacity: 0.7; }
+.chip.on { background: var(--accent-soft); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700; }
+.chip.on .n { color: inherit; opacity: 0.8; }
 .chip.pick.on { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent-text); }
 .chip.warn { background: var(--warn-bg); color: var(--warn); }
 .chip input { position: absolute; opacity: 0; pointer-events: none; }
@@ -157,13 +170,14 @@ h1.page { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height
 	border: 0; border-radius: 10px; background: transparent; color: var(--ink-2);
 	font: inherit; font-size: 15px; cursor: pointer; text-align: center; text-decoration: none;
 }
-.seg > .on, .seg > label:has(input:checked) { background: var(--ink); color: var(--bg); font-weight: 700; }
+/* Selected looks the same everywhere: a soft teal tint with an outline. */
+.seg > .on, .seg > label:has(input:checked) { background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent-text); font-weight: 700; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 /* Places across spaces: the space small on top, the place below ("Kitchen / Freezer"). */
 .seg > label.two { height: 52px; display: flex; flex-direction: column; justify-content: center; line-height: 1.15; }
 .seg > label.two small { font-size: 11px; opacity: 0.7; font-weight: 500; }
 .seg.mode > button { height: 48px; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
-.seg.mode > button.in.on { background: var(--accent); color: var(--accent-ink); }
+.seg.mode > button.in.on { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
 .putting-away .seg.mode { background: var(--putaway-card); box-shadow: inset 0 0 0 1.5px var(--putaway-line); }
 
 /* ── product rows ────────────────────────────────────────────────────── */
@@ -313,7 +327,7 @@ details > summary::-webkit-details-marker { display: none; }
 .nav a.scan { color: var(--ink); font-weight: 700; margin-top: -30px; }
 .nav a.scan .fab {
 	width: 58px; height: 58px; border-radius: 29px; background: var(--accent); color: #fff;
-	display: grid; place-items: center; box-shadow: 0 6px 18px rgba(31, 111, 209, 0.45);
+	display: grid; place-items: center; box-shadow: 0 6px 18px rgba(15, 133, 121, 0.45);
 }
 .nav a.scan .fab svg { width: 28px; height: 28px; }
 .nav a.scan.on { color: var(--accent-text); }
@@ -338,7 +352,7 @@ details > summary::-webkit-details-marker { display: none; }
 
 	.nav { top: 0; right: auto; width: 220px; border-top: 0; border-right: 1px solid var(--border); padding: 0; }
 	.nav-in { height: 100%; max-width: none; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 20px 12px; }
-	.nav .brand { display: block; order: -2; padding: 4px 12px 18px; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: var(--ink); }
+	.nav .brand { display: flex; order: -2; height: auto; padding: 4px 12px 18px; color: var(--ink); }
 	.nav a { flex-direction: row; gap: 12px; height: 44px; padding: 0 12px; border-radius: 10px; font-size: 15px; }
 	.nav a svg { width: 20px; height: 20px; }
 	.nav a.desk { display: flex; }

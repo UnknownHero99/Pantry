@@ -45,7 +45,7 @@
 
 <nav class="nav" aria-label="Main">
 	<div class="nav-in">
-		<a class="brand" href="/">Pantry</a>
+		<a class="brand" href="/" aria-label="Pantry"><img src="/logo.svg" alt="" /><span class="wordmark">pantry</span></a>
 		{#each tabs as t}
 			<a href={t.href} class:on={on(t.href)} class:scan={t.scan} class:desk={t.desk} class:more={t.href === '/more'} aria-current={on(t.href) ? 'page' : undefined}>
 				{#if t.scan}
