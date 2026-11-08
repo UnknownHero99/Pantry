@@ -12,14 +12,14 @@
 
 namespace pantry {
 
-// ── colours (match the v2 mockups) ───────────────────────────────────────
+// ── colours: the app's, with greys on the 16-bit screen's neutral steps ──
 
 namespace col {
-constexpr uint32_t BG = 0x0E1116, BG_IN = 0x0B1626;
-constexpr uint32_t CARD = 0x171B22, CARD_IN = 0x13233A, SIDE_IN = 0x101D30;
-constexpr uint32_t TEXT = 0xF1F3F7, MUTED = 0xA3ACBB, DIM = 0x8C95A5, FAINT = 0x5C6575;
-constexpr uint32_t GREEN = 0x2FBF71, AMBER = 0xF0A43A, RED = 0xF05A6A, RED_TEXT = 0xFF8C99;
-constexpr uint32_t BLUE = 0x1F6FD1, BLUE_TEXT = 0x6FB0FF;
+constexpr uint32_t BG = 0x202020, BG_IN = 0x18272A;
+constexpr uint32_t CARD = 0x282828, CARD_IN = 0x1F3436, SIDE_IN = 0x1B2D2F;
+constexpr uint32_t TEXT = 0xF2F1EE, MUTED = 0xB0B0B0, DIM = 0xA0A0A0, FAINT = 0x686868;
+constexpr uint32_t GREEN = 0x5CC46E, AMBER = 0xF2AC44, RED = 0xF2646F, RED_TEXT = 0xFF9AA3;
+constexpr uint32_t BLUE = 0x0F8579, BLUE_TEXT = 0x5FD3C6;  // teal now; the names stay
 }  // namespace col
 
 // ── tiny LVGL helpers ────────────────────────────────────────────────────
@@ -229,7 +229,7 @@ inline std::string soon_text(size_t max) {
     if (i) out += "\n";
     out += s.name;
     if (s.n > 1) out += " ×" + std::to_string(s.n);
-    out += s.days <= 7 ? " · #F0A43A " + days_text(s.days) + "#" : " · " + days_text(s.days);
+    out += s.days <= 7 ? " · #F2AC44 " + days_text(s.days) + "#" : " · " + days_text(s.days);
   }
   return out;
 }

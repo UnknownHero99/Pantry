@@ -77,6 +77,10 @@ font:
   - { file: *mdi, id: i64, size: 64, bpp: 4, glyphs: *icons }
 
 image:
+  # The logo, built into the firmware so it shows offline too. logo.png is
+  # rendered from static/logo.svg (the app's logo).
+  - { platform: file, file: logo.png, id: logo_64, resize: 64x64, type: RGB565, transparency: alpha_channel }
+  - { platform: file, file: logo.png, id: logo_32, resize: 32x32, type: RGB565, transparency: alpha_channel }
   - platform: online_image
     id: product_img
     url: ${server}/img/0.jpg   # replaced at runtime per scan
@@ -105,7 +109,7 @@ lvgl:
     # Plain containers: no default border, padding, radius or background,
     # and light text (LVGL's default theme would hand its dark text down).
     obj:
-      text_color: 0xF1F3F7
+      text_color: 0xF2F1EE
       border_width: 0
       pad_all: 0
       radius: 0
@@ -115,8 +119,8 @@ lvgl:
       border_width: 0
   pages:
     - id: main_page
-      bg_color: 0x0E1116
-      text_color: 0xF1F3F7
+      bg_color: 0x202020
+      text_color: 0xF2F1EE
       scrollable: false
       widgets:
         # ── status bar: clock, date, location / offline ──────────────────
@@ -131,13 +135,14 @@ lvgl:
             scrollable: false
             layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
             widgets:
+              - image: { src: logo_32 }
               - label: { id: lbl_clock, text: "--:--", text_font: f30b }
-              - label: { id: lbl_date, text: "", text_font: f20, text_color: 0x8C95A5 }
+              - label: { id: lbl_date, text: "", text_font: f20, text_color: 0xA0A0A0 }
               - obj: { flex_grow: 1, height: 1 }
-              - obj: { id: status_dot, width: 10, height: 10, radius: 5, bg_opa: COVER, bg_color: 0x2FBF71 }
-              - label: { id: lbl_status, text: "${location}", text_font: f18, text_color: 0x8C95A5 }
+              - obj: { id: status_dot, width: 10, height: 10, radius: 5, bg_opa: COVER, bg_color: 0x5CC46E }
+              - label: { id: lbl_status, text: "${location}", text_font: f18, text_color: 0xA0A0A0 }
 
-        # ── status bar in put-away mode: blue band + drain bar ───────────
+        # ── status bar in put-away mode: teal band + drain bar ───────────
         - obj:
             id: sb_putaway
             x: 0
@@ -147,7 +152,7 @@ lvgl:
             pad_left: 20
             pad_right: 20
             bg_opa: COVER
-            bg_color: 0x1F6FD1
+            bg_color: 0x0F8579
             text_color: 0xFFFFFF
             hidden: true
             scrollable: false
@@ -155,9 +160,9 @@ lvgl:
             widgets:
               - label: { text: "\U000F005D", text_font: i28 }
               - label: { text: "PUTTING AWAY", text_font: f22b, text_letter_space: 1 }
-              - label: { id: lbl_pa_count, text: "", text_font: f20, text_color: 0xD6E6FF }
+              - label: { id: lbl_pa_count, text: "", text_font: f20, text_color: 0xC4ECE6 }
               - obj: { flex_grow: 1, height: 1 }
-              - label: { id: lbl_pa_timer, text: "", text_font: f18, text_color: 0xD6E6FF, recolor: true }
+              - label: { id: lbl_pa_timer, text: "", text_font: f18, text_color: 0xC4ECE6, recolor: true }
               - bar:
                   id: bar_pa
                   floating: true
@@ -170,7 +175,7 @@ lvgl:
                   value: 120
                   radius: 0
                   bg_opa: COVER
-                  bg_color: 0x174F96
+                  bg_color: 0x0B6159
                   anim_duration: 1s
                   indicator:
                     radius: 0
@@ -199,22 +204,24 @@ lvgl:
                         width: 100%
                         flex_grow: 1
                         bg_opa: COVER
-                        bg_color: 0x171B22
+                        bg_color: 0x282828
                         radius: 20
                         pad_left: 30
                         pad_right: 30
                         scrollable: false
                         layout: { type: flex, flex_flow: column, flex_align_main: center, pad_row: 14 }
                         widgets:
-                          - label: { id: home_icon, text: "\U000F0072", text_font: i64 }
+                          # The logo when taking out; an arrow when putting away.
+                          - image: { id: home_logo, src: logo_64 }
+                          - label: { id: home_icon, text: "\U000F005D", text_font: i64, hidden: true }
                           - label: { id: home_title, text: "Scan to take out", text_font: f44b, width: 100%, long_mode: WRAP }
                           - label:
                               id: home_hint
-                              text: "Unpacking shopping? Tap #6FB0FF Put away# first."
+                              text: "Unpacking shopping? Tap #5FD3C6 Put away# first."
                               recolor: true
                               width: 100%
                               long_mode: WRAP
-                              text_color: 0xA3ACBB
+                              text_color: 0xB0B0B0
 
                     # Result of a scan: product, home-made package, nothing in stock, error
                     - obj:
@@ -223,10 +230,10 @@ lvgl:
                         flex_grow: 1
                         hidden: true
                         bg_opa: COVER
-                        bg_color: 0x171B22
+                        bg_color: 0x282828
                         radius: 20
                         border_width: 3
-                        border_color: 0x2FBF71
+                        border_color: 0x5CC46E
                         pad_all: 16
                         pad_left: 20
                         pad_right: 20
@@ -240,12 +247,12 @@ lvgl:
                               radius: 16
                               clip_corner: true
                               bg_opa: COVER
-                              bg_color: 0x222936
+                              bg_color: 0x303030
                               scrollable: false
                               widgets:
-                                - label: { id: media_icon, align: CENTER, text: "\U000F0072", text_font: i64, text_color: 0x5C6575 }
+                                - label: { id: media_icon, align: CENTER, text: "\U000F0072", text_font: i64, text_color: 0x686868 }
                                 - image: { id: img_product, src: product_img, align: CENTER, hidden: true }
-                                - label: { id: lbl_pkg_code, align: BOTTOM_MID, y: -10, text: "", text_font: f15b, text_color: 0x8C95A5 }
+                                - label: { id: lbl_pkg_code, align: BOTTOM_MID, y: -10, text: "", text_font: f15b, text_color: 0xA0A0A0 }
                           - obj:
                               id: res_info
                               flex_grow: 1
@@ -261,7 +268,7 @@ lvgl:
                                       - label: { id: chip_icon, text: "\U000F0E1E", text_font: i22 }
                                       - label: { id: chip_text, text: "", text_font: f17b, text_letter_space: 1 }
                                 - label: { id: res_name, text: "", text_font: f36b, width: 100%, max_height: 84, long_mode: WRAP, recolor: true }
-                                - label: { id: res_meta, text: "", width: 100%, long_mode: DOT, text_color: 0xA3ACBB }
+                                - label: { id: res_meta, text: "", width: 100%, long_mode: DOT, text_color: 0xB0B0B0 }
                                 - obj:
                                     id: pkg_tiles
                                     width: 100%
@@ -273,27 +280,27 @@ lvgl:
                                           flex_grow: 1
                                           height: SIZE_CONTENT
                                           bg_opa: COVER
-                                          bg_color: 0x202631
+                                          bg_color: 0x303030
                                           radius: 12
                                           pad_all: 8
                                           pad_left: 14
                                           layout: { type: flex, flex_flow: column, pad_row: 2 }
                                           widgets:
-                                            - label: { text: "PACKED", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
+                                            - label: { text: "PACKED", text_font: f15b, text_letter_space: 1, text_color: 0xA0A0A0 }
                                             - label: { id: lbl_packed, text: "" }
                                       - obj:
                                           flex_grow: 1
                                           height: SIZE_CONTENT
                                           bg_opa: COVER
-                                          bg_color: 0x202631
+                                          bg_color: 0x303030
                                           radius: 12
                                           pad_all: 8
                                           pad_left: 14
                                           layout: { type: flex, flex_flow: column, pad_row: 2 }
                                           widgets:
-                                            - label: { text: "USE BY", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
+                                            - label: { text: "USE BY", text_font: f15b, text_letter_space: 1, text_color: 0xA0A0A0 }
                                             - label: { id: lbl_useby, text: "" }
-                                - label: { id: res_text, text: "", width: 100%, long_mode: WRAP, text_font: f18, text_color: 0xE7B9BF, hidden: true }
+                                - label: { id: res_text, text: "", width: 100%, long_mode: WRAP, text_font: f18, text_color: 0xF0C2C6, hidden: true }
                                 - obj: { flex_grow: 1, width: 1 }
                                 - obj:
                                     id: count_row
@@ -301,19 +308,19 @@ lvgl:
                                     height: SIZE_CONTENT
                                     layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 12 }
                                     widgets:
-                                      - label: { id: lbl_prev, text: "", text_font: f44b, text_color: 0x5C6575 }
-                                      - label: { id: lbl_arrow, text: "\U000F0054", text_font: i28, text_color: 0x5C6575 }
+                                      - label: { id: lbl_prev, text: "", text_font: f44b, text_color: 0x686868 }
+                                      - label: { id: lbl_arrow, text: "\U000F0054", text_font: i28, text_color: 0x686868 }
                                       - label: { id: lbl_count, text: "", text_font: f72b }
                                       - label: { id: lbl_count_s, text: "", text_font: f44b, hidden: true }
-                                      - label: { id: lbl_left, text: "left", text_color: 0xA3ACBB }
+                                      - label: { id: lbl_left, text: "left", text_color: 0xB0B0B0 }
                                       - obj: { flex_grow: 1, height: 1 }
-                                      - label: { id: lbl_more, text: "Took\nmore?", text_font: f18, text_color: 0xA3ACBB, text_align: RIGHT }
+                                      - label: { id: lbl_more, text: "Took\nmore?", text_font: f18, text_color: 0xB0B0B0, text_align: RIGHT }
                                       - button:
                                           id: btn_minus
                                           width: 60
                                           height: 60
                                           radius: 14
-                                          bg_color: 0x262C37
+                                          bg_color: 0x404040
                                           widgets:
                                             - label: { text: "−", align: CENTER, text_font: f30b }
                                           on_click:
@@ -323,7 +330,7 @@ lvgl:
                                           width: 60
                                           height: 60
                                           radius: 14
-                                          bg_color: 0x39404D
+                                          bg_color: 0x484848
                                           widgets:
                                             - label: { text: "+", align: CENTER, text_font: f30b }
                                           on_click:
@@ -340,9 +347,9 @@ lvgl:
                                           flex_grow: 1
                                           height: 64
                                           radius: 14
-                                          bg_color: 0xF1F3F7
+                                          bg_color: 0xF2F1EE
                                           widgets:
-                                            - label: { text: "It was there, fix count", align: CENTER, text_font: f22b, text_color: 0x0E1116 }
+                                            - label: { text: "It was there, fix count", align: CENTER, text_font: f22b, text_color: 0x202020 }
                                           on_click:
                                             - script.execute: fix_count
                                       - button:
@@ -351,9 +358,9 @@ lvgl:
                                           radius: 14
                                           bg_opa: TRANSP
                                           border_width: 2
-                                          border_color: 0x5A2A32
+                                          border_color: 0x6A3439
                                           widgets:
-                                            - label: { text: "Ignore", align: CENTER, text_font: f22b, text_color: 0xE7B9BF }
+                                            - label: { text: "Ignore", align: CENTER, text_font: f22b, text_color: 0xF0C2C6 }
                                           on_click:
                                             - script.execute: show_idle
                           # Drains while the result is up, then the screen goes home.
@@ -372,7 +379,7 @@ lvgl:
                               anim_duration: 8s
                               indicator:
                                 radius: 2
-                                bg_color: 0x2FBF71
+                                bg_color: 0x5CC46E
                                 bg_opa: 60%
 
                     # A new barcode, while the server asks Open Food Facts
@@ -382,10 +389,10 @@ lvgl:
                         flex_grow: 1
                         hidden: true
                         bg_opa: COVER
-                        bg_color: 0x13233A
+                        bg_color: 0x1F3436
                         radius: 20
                         border_width: 3
-                        border_color: 0x2B4A73
+                        border_color: 0x2F5B58
                         pad_left: 28
                         pad_right: 28
                         scrollable: false
@@ -396,19 +403,19 @@ lvgl:
                               height: 64
                               spin_time: 1s
                               arc_length: 90deg
-                              arc_color: 0x223654
+                              arc_color: 0x2A4949
                               arc_width: 5
                               indicator:
-                                arc_color: 0x6FB0FF
+                                arc_color: 0x5FD3C6
                                 arc_width: 5
                           - label: { text: "Looking it up…", text_font: f36b }
-                          - label: { id: lbl_lookup_code, text: "", text_font: f22b, text_letter_space: 2, text_color: 0xCFE0F7 }
+                          - label: { id: lbl_lookup_code, text: "", text_font: f22b, text_letter_space: 2, text_color: 0xC6E6E1 }
                           - label:
                               text: "First time we've seen this barcode. Asking Open Food Facts for its name and photo. Keep scanning, it's already counted."
                               width: 100%
                               long_mode: WRAP
                               text_font: f18
-                              text_color: 0xA9B8CC
+                              text_color: 0xA5C4C0
 
                     # Not in the food database: QR opens it on the phone to name it
                     - obj:
@@ -417,10 +424,10 @@ lvgl:
                         flex_grow: 1
                         hidden: true
                         bg_opa: COVER
-                        bg_color: 0x2A2112
+                        bg_color: 0x3A2F1C
                         radius: 20
                         border_width: 3
-                        border_color: 0xF0A43A
+                        border_color: 0xF2AC44
                         pad_all: 20
                         scrollable: false
                         layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 20 }
@@ -433,14 +440,14 @@ lvgl:
                                 - obj:
                                     width: SIZE_CONTENT
                                     height: SIZE_CONTENT
-                                    text_color: 0xF0A43A
+                                    text_color: 0xF2AC44
                                     layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 8 }
                                     widgets:
                                       - label: { text: "\U000F0625", text_font: i22 }
                                       - label: { text: "NEW BARCODE", text_font: f17b, text_letter_space: 1 }
                                 - label: { id: lbl_unk_title, text: "Not in the food database", text_font: f30b, width: 100%, long_mode: WRAP }
-                                - label: { id: lbl_unk_code, text: "", text_font: f22b, text_letter_space: 1, text_color: 0xE3C493 }
-                                - label: { id: lbl_unk_text, text: "", text_font: f18, width: 100%, long_mode: WRAP, text_color: 0xD9C9AE }
+                                - label: { id: lbl_unk_code, text: "", text_font: f22b, text_letter_space: 1, text_color: 0xECD0A0 }
+                                - label: { id: lbl_unk_text, text: "", text_font: f18, width: 100%, long_mode: WRAP, text_color: 0xDDCFB4 }
                           - obj:
                               id: unk_qr
                               width: SIZE_CONTENT
@@ -458,10 +465,10 @@ lvgl:
                                       - qrcode:
                                           id: qr_code
                                           size: 140
-                                          dark_color: 0x0E1116
+                                          dark_color: 0x202020
                                           light_color: 0xFFFFFF
                                           text: "pantry"
-                                - label: { text: "Name it on your phone", text_font: f15, text_color: 0xD9C9AE }
+                                - label: { text: "Name it on your phone", text_font: f15, text_color: 0xDDCFB4 }
 
                     # Server unreachable: scans wait on this unit
                     - obj:
@@ -470,23 +477,23 @@ lvgl:
                         flex_grow: 1
                         hidden: true
                         bg_opa: COVER
-                        bg_color: 0x2A1519
+                        bg_color: 0x3A2124
                         radius: 20
                         border_width: 3
-                        border_color: 0xF05A6A
+                        border_color: 0xF2646F
                         pad_left: 26
                         pad_right: 26
                         scrollable: false
                         layout: { type: flex, flex_flow: column, flex_align_main: center, pad_row: 12 }
                         widgets:
-                          - label: { text: "\U000F05AA", text_font: i64, text_color: 0xF05A6A }
+                          - label: { text: "\U000F05AA", text_font: i64, text_color: 0xF2646F }
                           - label: { text: "Can't reach the pantry", text_font: f36b, width: 100%, long_mode: WRAP }
                           - label:
                               text: "Keep scanning. Scans are saved on this scanner and sent automatically when the server is back."
                               width: 100%
                               long_mode: WRAP
-                              text_color: 0xE7B9BF
-                          - label: { id: lbl_retry, text: "", text_font: f18, text_color: 0xC98F97 }
+                              text_color: 0xF0C2C6
+                          - label: { id: lbl_retry, text: "", text_font: f18, text_color: 0xD49AA0 }
 
                     # UNDO: this scanner's recent scans, tap one to reverse it
                     - obj:
@@ -495,7 +502,7 @@ lvgl:
                         flex_grow: 1
                         hidden: true
                         bg_opa: COVER
-                        bg_color: 0x171B22
+                        bg_color: 0x282828
                         radius: 20
                         pad_all: 14
                         pad_left: 16
@@ -510,14 +517,14 @@ lvgl:
                               pad_left: 6
                               pad_right: 6
                               widgets:
-                                - label: { text: "UNDO A SCAN", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
-                                - label: { align: TOP_RIGHT, text: "Tap the one to reverse", text_font: f15, text_color: 0x8C95A5 }
+                                - label: { text: "UNDO A SCAN", text_font: f15b, text_letter_space: 1, text_color: 0xA0A0A0 }
+                                - label: { align: TOP_RIGHT, text: "Tap the one to reverse", text_font: f15, text_color: 0xA0A0A0 }
                           - button:
                               id: urow0
                               width: 100%
                               height: 48
                               radius: 12
-                              bg_color: 0x1C2129
+                              bg_color: 0x303030
                               pad_left: 14
                               pad_right: 14
                               hidden: true
@@ -526,8 +533,8 @@ lvgl:
                                 - label: { id: urow0_icon, text: "\U000F0045", text_font: i22 }
                                 - label: { id: urow0_name, text: "", flex_grow: 1, long_mode: DOT }
                                 - label: { id: urow0_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
-                                - label: { id: urow0_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
-                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                                - label: { id: urow0_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0xA0A0A0 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0xA0A0A0 }
                               on_click:
                                 - script.execute: { id: undo_pick, i: 0 }
                           - button:
@@ -535,7 +542,7 @@ lvgl:
                               width: 100%
                               height: 48
                               radius: 12
-                              bg_color: 0x1C2129
+                              bg_color: 0x303030
                               pad_left: 14
                               pad_right: 14
                               hidden: true
@@ -544,8 +551,8 @@ lvgl:
                                 - label: { id: urow1_icon, text: "\U000F0045", text_font: i22 }
                                 - label: { id: urow1_name, text: "", flex_grow: 1, long_mode: DOT }
                                 - label: { id: urow1_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
-                                - label: { id: urow1_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
-                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                                - label: { id: urow1_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0xA0A0A0 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0xA0A0A0 }
                               on_click:
                                 - script.execute: { id: undo_pick, i: 1 }
                           - button:
@@ -553,7 +560,7 @@ lvgl:
                               width: 100%
                               height: 48
                               radius: 12
-                              bg_color: 0x1C2129
+                              bg_color: 0x303030
                               pad_left: 14
                               pad_right: 14
                               hidden: true
@@ -562,8 +569,8 @@ lvgl:
                                 - label: { id: urow2_icon, text: "\U000F0045", text_font: i22 }
                                 - label: { id: urow2_name, text: "", flex_grow: 1, long_mode: DOT }
                                 - label: { id: urow2_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
-                                - label: { id: urow2_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
-                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                                - label: { id: urow2_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0xA0A0A0 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0xA0A0A0 }
                               on_click:
                                 - script.execute: { id: undo_pick, i: 2 }
                           - button:
@@ -571,7 +578,7 @@ lvgl:
                               width: 100%
                               height: 48
                               radius: 12
-                              bg_color: 0x1C2129
+                              bg_color: 0x303030
                               pad_left: 14
                               pad_right: 14
                               hidden: true
@@ -580,8 +587,8 @@ lvgl:
                                 - label: { id: urow3_icon, text: "\U000F0045", text_font: i22 }
                                 - label: { id: urow3_name, text: "", flex_grow: 1, long_mode: DOT }
                                 - label: { id: urow3_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
-                                - label: { id: urow3_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
-                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                                - label: { id: urow3_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0xA0A0A0 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0xA0A0A0 }
                               on_click:
                                 - script.execute: { id: undo_pick, i: 3 }
                           - button:
@@ -589,7 +596,7 @@ lvgl:
                               width: 100%
                               height: 48
                               radius: 12
-                              bg_color: 0x1C2129
+                              bg_color: 0x303030
                               pad_left: 14
                               pad_right: 14
                               hidden: true
@@ -598,11 +605,11 @@ lvgl:
                                 - label: { id: urow4_icon, text: "\U000F0045", text_font: i22 }
                                 - label: { id: urow4_name, text: "", flex_grow: 1, long_mode: DOT }
                                 - label: { id: urow4_n, text: "", width: 44, text_align: RIGHT, text_font: f22b }
-                                - label: { id: urow4_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0x8C95A5 }
-                                - label: { text: "\U000F054C", text_font: i22, text_color: 0x8C95A5 }
+                                - label: { id: urow4_ago, text: "", width: 78, text_align: RIGHT, text_font: f18, text_color: 0xA0A0A0 }
+                                - label: { text: "\U000F054C", text_font: i22, text_color: 0xA0A0A0 }
                               on_click:
                                 - script.execute: { id: undo_pick, i: 4 }
-                          - label: { id: undo_none, hidden: true, text: "Nothing from this scanner in the last day.", text_color: 0xA3ACBB, pad_left: 6, pad_top: 8 }
+                          - label: { id: undo_none, hidden: true, text: "Nothing from this scanner in the last day.", text_color: 0xB0B0B0, pad_left: 6, pad_top: 8 }
 
                     # Under the card: "that was the last one", "an older pack is waiting"
                     - obj:
@@ -611,7 +618,7 @@ lvgl:
                         height: SIZE_CONTENT
                         hidden: true
                         bg_opa: COVER
-                        bg_color: 0x3A2A10
+                        bg_color: 0x4A3A1E
                         radius: 16
                         pad_all: 12
                         pad_left: 18
@@ -619,9 +626,9 @@ lvgl:
                         # One line, so the card above keeps room for its count.
                         layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 14 }
                         widgets:
-                          - label: { id: banner_icon, text: "\U000F0111", text_font: i28, text_color: 0xF0A43A }
-                          - label: { id: banner_title, text: "", text_font: f22b, text_color: 0xFFD9A0 }
-                          - label: { id: banner_sub, text: "", text_font: f18, flex_grow: 1, long_mode: DOT, text_color: 0xE3C493 }
+                          - label: { id: banner_icon, text: "\U000F0111", text_font: i28, text_color: 0xF2AC44 }
+                          - label: { id: banner_title, text: "", text_font: f22b, text_color: 0xFFDDA6 }
+                          - label: { id: banner_sub, text: "", text_font: f18, flex_grow: 1, long_mode: DOT, text_color: 0xECD0A0 }
 
               # Home tiles (take-out mode, idle)
               - obj:
@@ -635,36 +642,36 @@ lvgl:
                         width: 100%
                         flex_grow: 1
                         bg_opa: COVER
-                        bg_color: 0x171B22
+                        bg_color: 0x282828
                         radius: 16
                         pad_all: 14
                         pad_left: 16
                         pad_right: 16
                         scrollable: false
                         widgets:
-                          - label: { text: "TO BUY", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
+                          - label: { text: "TO BUY", text_font: f15b, text_letter_space: 1, text_color: 0xA0A0A0 }
                           - label: { id: lbl_buy_n, align: TOP_RIGHT, text: "", text_font: f15b }
                           - label: { id: lbl_buy, y: 26, width: 100%, max_height: 76, long_mode: WRAP, text: "", text_line_space: 4 }
                     - obj:
                         width: 100%
                         flex_grow: 1
                         bg_opa: COVER
-                        bg_color: 0x171B22
+                        bg_color: 0x282828
                         radius: 16
                         pad_all: 14
                         pad_left: 16
                         pad_right: 16
                         scrollable: false
                         widgets:
-                          - label: { text: "USE SOON", text_font: f15b, text_letter_space: 1, text_color: 0x8C95A5 }
-                          - label: { id: lbl_soon_n, align: TOP_RIGHT, text: "", text_font: f15b, text_color: 0xF0A43A }
+                          - label: { text: "USE SOON", text_font: f15b, text_letter_space: 1, text_color: 0xA0A0A0 }
+                          - label: { id: lbl_soon_n, align: TOP_RIGHT, text: "", text_font: f15b, text_color: 0xF2AC44 }
                           - label: { id: lbl_soon, y: 26, width: 100%, max_height: 76, long_mode: CLIP, text: "", recolor: true, text_line_space: 4 }
                     - obj:
                         id: tile_inbox
                         width: 100%
                         height: 54
                         bg_opa: COVER
-                        bg_color: 0x171B22
+                        bg_color: 0x282828
                         radius: 16
                         pad_left: 16
                         layout: { type: flex, flex_flow: row, flex_align_cross: center, pad_column: 12 }
@@ -674,10 +681,10 @@ lvgl:
                               height: 30
                               radius: 15
                               bg_opa: COVER
-                              bg_color: 0xF0A43A
+                              bg_color: 0xF2AC44
                               widgets:
-                                - label: { id: lbl_inbox_n, align: CENTER, text: "", text_font: f17b, text_color: 0x0E1116 }
-                          - label: { id: lbl_inbox, text: "new items to name", text_font: f18, text_color: 0xC9D0DB }
+                                - label: { id: lbl_inbox_n, align: CENTER, text: "", text_font: f17b, text_color: 0x202020 }
+                          - label: { id: lbl_inbox, text: "new items to name", text_font: f18, text_color: 0xCFCFCC }
 
               # Side list: THIS TRIP in put-away mode, WAITING TO SEND when offline
               - obj:
@@ -686,20 +693,20 @@ lvgl:
                   height: 100%
                   hidden: true
                   bg_opa: COVER
-                  bg_color: 0x101D30
+                  bg_color: 0x1B2D2F
                   radius: 18
                   pad_all: 14
                   pad_left: 16
                   pad_right: 16
                   scrollable: false
                   widgets:
-                    - label: { id: list_title, text: "THIS TRIP", text_font: f15b, text_letter_space: 1, text_color: 0x7F93AF }
+                    - label: { id: list_title, text: "THIS TRIP", text_font: f15b, text_letter_space: 1, text_color: 0x7FA5A0 }
                     - label: { id: list_n, align: TOP_RIGHT, text: "", text_font: f15b }
-                    - obj: { id: row0, y: 26, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
-                    - obj: { id: row1, y: 62, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
-                    - obj: { id: row2, y: 98, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
-                    - obj: { id: row3, y: 134, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
-                    - obj: { id: row4, y: 170, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x1C2D45, hidden: true }
+                    - obj: { id: row0, y: 26, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
+                    - obj: { id: row1, y: 62, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
+                    - obj: { id: row2, y: 98, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
+                    - obj: { id: row3, y: 134, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
+                    - obj: { id: row4, y: 170, width: 100%, height: 36, border_side: BOTTOM, border_width: 1, border_color: 0x25403F, hidden: true }
                     - label: { id: row0_name, y: 33, width: 150, long_mode: DOT, text: "", text_font: f18 }
                     - label: { id: row1_name, y: 69, width: 150, long_mode: DOT, text: "", text_font: f18 }
                     - label: { id: row2_name, y: 105, width: 150, long_mode: DOT, text: "", text_font: f18 }
@@ -710,7 +717,7 @@ lvgl:
                     - label: { id: row2_n, y: 105, align: TOP_RIGHT, text: "", text_font: f18 }
                     - label: { id: row3_n, y: 141, align: TOP_RIGHT, text: "", text_font: f18 }
                     - label: { id: row4_n, y: 177, align: TOP_RIGHT, text: "", text_font: f18 }
-                    - label: { id: list_foot, align: BOTTOM_LEFT, width: 100%, long_mode: WRAP, text: "", text_font: f15, recolor: true, text_color: 0x7F93AF }
+                    - label: { id: list_foot, align: BOTTOM_LEFT, width: 100%, long_mode: WRAP, text: "", text_font: f15, recolor: true, text_color: 0x7FA5A0 }
 
         # ── bottom bar: mode switch + undo ───────────────────────────────
         - obj:
@@ -721,9 +728,9 @@ lvgl:
             height: 72
             radius: 20
             border_width: 2
-            border_color: 0x2E3A4D
+            border_color: 0x404040
             bg_opa: COVER
-            bg_color: 0x131821
+            bg_color: 0x282828
             pad_all: 6
             scrollable: false
             layout: { type: flex, flex_flow: row, pad_column: 6 }
@@ -773,13 +780,14 @@ lvgl:
 
     # Dimmed ambient screen after 5 min without a touch or scan
     - id: night_page
-      bg_color: 0x000000
+      bg_color: 0x181818
       scrollable: false
       widgets:
-        - label: { id: lbl_night_clock, align: CENTER, y: -70, text: "--:--", text_font: f140, text_color: 0xC4CAD4 }
-        - label: { id: lbl_night_date, align: CENTER, y: 22, text: "", text_color: 0x8790A0 }
-        - label: { id: lbl_night_stats, align: CENTER, y: 92, text: "", recolor: true, text_color: 0x9AA3B2 }
-        - label: { align: CENTER, y: 150, text: "Scan or touch to wake", text_font: f18, text_color: 0x7A8292 }
+        - image: { src: logo_32, align: TOP_MID, y: 36, opa: 70% }
+        - label: { id: lbl_night_clock, align: CENTER, y: -70, text: "--:--", text_font: f140, text_color: 0xC8C8C5 }
+        - label: { id: lbl_night_date, align: CENTER, y: 22, text: "", text_color: 0x989898 }
+        - label: { id: lbl_night_stats, align: CENTER, y: 92, text: "", recolor: true, text_color: 0xA8A8A8 }
+        - label: { align: CENTER, y: 150, text: "Scan or touch to wake", text_font: f18, text_color: 0x888888 }
 
 # ── behaviour ───────────────────────────────────────────────────────────
 
@@ -806,13 +814,13 @@ script:
           show(id(sb_normal), !in);
           show(id(sb_putaway), in);
           bg(id(main_page)->obj, in ? col::BG_IN : col::BG);
-          bg(id(seg), in ? 0x0F1B2D : 0x131821);
-          border(id(seg), in ? 0x23354F : 0x2E3A4D);
-          bg(id(btn_takeout), in ? 0x0F1B2D : col::TEXT);
-          fg(id(btn_takeout), in ? 0xC9D0DB : col::BG);
-          bg(id(btn_putaway), in ? col::BLUE : 0x131821);
+          bg(id(seg), in ? 0x1A2B2D : 0x282828);
+          border(id(seg), in ? 0x2C4B4C : 0x404040);
+          bg(id(btn_takeout), in ? 0x1A2B2D : col::TEXT);
+          fg(id(btn_takeout), in ? 0xCFCFCC : col::BG);
+          bg(id(btn_putaway), in ? col::BLUE : 0x282828);
           fg(id(btn_putaway), in ? 0xFFFFFF : col::BLUE_TEXT);
-          bg(id(side_list), in ? col::SIDE_IN : 0x1E1013);
+          bg(id(side_list), in ? col::SIDE_IN : 0x2A1A1C);
           lv_bar_set_value(id(bar_pa), 120, LV_ANIM_OFF);
       - script.execute: paint_undo
 
@@ -829,9 +837,9 @@ script:
             fg(id(btn_undo), col::BG);
             return;
           }
-          bg(id(btn_undo), on ? (in ? 0x0F1B2D : 0x131821) : (in ? col::BG_IN : col::BG));
-          border(id(btn_undo), on ? (in ? 0x23354F : 0x2E3A4D) : (in ? 0x182740 : 0x232A36));
-          fg(id(btn_undo), on ? 0xC9D0DB : (in ? 0x3E5272 : 0x4A5260));
+          bg(id(btn_undo), on ? (in ? 0x1A2B2D : 0x282828) : (in ? col::BG_IN : col::BG));
+          border(id(btn_undo), on ? (in ? 0x2C4B4C : 0x404040) : (in ? 0x21393A : 0x383838));
+          fg(id(btn_undo), on ? 0xCFCFCC : (in ? 0x3F625F : 0x585858));
 
   # Home stage: "Scan to take out" + tiles, or "Scan as you put away" + trip.
   - id: show_idle
@@ -844,11 +852,12 @@ script:
           id(undo_open) = false;
           show(id(home_card), true);
           bg(id(home_card), in ? col::CARD_IN : col::CARD);
-          text(id(home_icon), in ? "\U000F005D" : "\U000F0072");
-          fg(id(home_icon), in ? col::BLUE_TEXT : col::TEXT);
+          show(id(home_logo), !in);
+          show(id(home_icon), in);
+          fg(id(home_icon), col::BLUE_TEXT);
           text(id(home_title), in ? "Scan each item as you put it away" : "Scan to take out");
-          text(id(home_hint), in ? "Bought several of the same? Scan one, then tap #6FB0FF +#."
-                                 : "Unpacking shopping? Tap #6FB0FF Put away# first.");
+          text(id(home_hint), in ? "Bought several of the same? Scan one, then tap #5FD3C6 +#."
+                                 : "Unpacking shopping? Tap #5FD3C6 Put away# first.");
           if (!in) id(undo_event) = 0;
           id(fix_event) = 0;
       - script.execute: paint_undo
@@ -872,9 +881,9 @@ script:
           lv_obj_t *rows[] = {id(row0), id(row1), id(row2), id(row3), id(row4)};
           std::string foot;
           if (off) {
-            bg(id(side_list), 0x1E1013);
+            bg(id(side_list), 0x2A1A1C);
             text(id(list_title), "WAITING TO SEND");
-            fg(id(list_title), 0xC98F97);
+            fg(id(list_title), 0xD49AA0);
             text(id(list_n), std::to_string(queue.size()));
             size_t n = queue.size();
             for (int i = 0; i < 5; i++) {
@@ -886,13 +895,13 @@ script:
               fg(names[i], col::TEXT);
               text(nums[i], q.in ? "in" : "out");
               fg(nums[i], q.in ? col::BLUE_TEXT : col::RED_TEXT);
-              border(rows[i], 0x3A2026);
+              border(rows[i], 0x4A2A2F);
             }
             if (n > 5) foot = "+ " + std::to_string(n - 5) + " more";
           } else {
             bg(id(side_list), col::SIDE_IN);
             text(id(list_title), "THIS TRIP");
-            fg(id(list_title), 0x7F93AF);
+            fg(id(list_title), 0x7FA5A0);
             text(id(list_n), "");
             size_t n = trip.size();
             for (int i = 0; i < 5; i++) {
@@ -900,17 +909,17 @@ script:
               show(rows[i], has); show(names[i], has); show(nums[i], has);
               if (!has) continue;
               auto &t = trip[i];
-              uint32_t c = t.status == "unknown" ? col::AMBER : t.status == "lookup" ? 0x7F93AF : col::GREEN;
+              uint32_t c = t.status == "unknown" ? col::AMBER : t.status == "lookup" ? 0x7FA5A0 : col::GREEN;
               text(names[i], t.name);
               fg(names[i], t.status == "ok" ? col::TEXT : c);
               text(nums[i], "+" + std::to_string(t.units));
               fg(nums[i], c);
-              border(rows[i], 0x1C2D45);
+              border(rows[i], 0x25403F);
             }
             if (n == 0) foot = "Nothing yet.";
             if (n > 5) foot = "+ " + std::to_string(n - 5) + " more";
             else if (!summary.low.empty())
-              foot += std::string(foot.empty() ? "" : "\n") + "Still on the list:\n#CFE0F7 " + join(summary.low, ", ", 4) + "#";
+              foot += std::string(foot.empty() ? "" : "\n") + "Still on the list:\n#C6E6E1 " + join(summary.low, ", ", 4) + "#";
           }
           text(id(list_foot), foot);
 
@@ -961,7 +970,7 @@ script:
           bool empty = r.status == "empty";
           bool box = r.status == "box";   // a garage box label: nothing moves, open it on the phone
           show(id(res_card), true);
-          bg(id(res_card), ok || box ? (in ? col::CARD_IN : col::CARD) : 0x2A1519);
+          bg(id(res_card), ok || box ? (in ? col::CARD_IN : col::CARD) : 0x3A2124);
           border(id(res_card), box ? col::BLUE : ok ? (undo ? col::DIM : col::GREEN) : col::RED);
 
           uint32_t chip = box ? col::BLUE_TEXT : ok ? (undo ? col::MUTED : col::GREEN) : col::RED_TEXT;
@@ -978,7 +987,7 @@ script:
           text(id(chip_text), what);
 
           // Packages: the amount sits next to the name, to leave room for the dates.
-          text(id(res_name), pkg && !r.meta.empty() ? r.title + " #A3ACBB " + r.meta + "#" : r.title);
+          text(id(res_name), pkg && !r.meta.empty() ? r.title + " #B0B0B0 " + r.meta + "#" : r.title);
           text(id(res_meta), r.meta);
           show(id(res_meta), !pkg && !r.meta.empty());
 
@@ -1017,8 +1026,8 @@ script:
           show(id(btn_minus), stepper);
           show(id(btn_plus), stepper);
           text(id(lbl_more), r.mode == "in" ? "Bought\nmore?" : "Took\nmore?");
-          bg(id(btn_minus), in ? 0x223654 : 0x262C37);
-          bg(id(btn_plus), in ? col::BLUE : 0x39404D);
+          bg(id(btn_minus), in ? 0x2A4949 : 0x404040);
+          bg(id(btn_plus), in ? col::BLUE : 0x484848);
 
           show(id(empty_row), empty && r.event_id > 0);
           show(id(bar_return), !in && ok);
@@ -1026,23 +1035,23 @@ script:
           // Banner under the card
           if (ok && !undo && r.last_one) {
             show(id(banner), true);
-            bg(id(banner), 0x3A2A10);
+            bg(id(banner), 0x4A3A1E);
             text(id(banner_icon), "\U000F0111");
             fg(id(banner_icon), col::AMBER);
             text(id(banner_title), "That was the last one");
-            fg(id(banner_title), 0xFFD9A0);
+            fg(id(banner_title), 0xFFDDA6);
             text(id(banner_sub), r.on_list ? "On the shopping list · " + std::to_string(r.list_count) + " to buy"
                                            : "Set a min stock to add it to the list");
-            fg(id(banner_sub), 0xE3C493);
+            fg(id(banner_sub), 0xECD0A0);
           } else if (ok && !undo && !r.older.empty()) {
             show(id(banner), true);
-            bg(id(banner), 0x142235);
+            bg(id(banner), 0x1D3133);
             text(id(banner_icon), "\U000F0150");
             fg(id(banner_icon), col::BLUE_TEXT);
             text(id(banner_title), "Older pack waiting: " + r.older);
-            fg(id(banner_title), 0xCFE3FF);
+            fg(id(banner_title), 0xC0EAE4);
             text(id(banner_sub), "use that one next");
-            fg(id(banner_sub), 0x9DB6D6);
+            fg(id(banner_sub), 0x98C3BE);
           }
       - script.execute: paint_undo
       - script.execute: paint_side
@@ -1239,9 +1248,9 @@ script:
             show(rows[i], has);
             if (!has) continue;
             auto &r = recent[i];
-            uint32_t c = r.in ? col::BLUE_TEXT : 0xC9D0DB;
+            uint32_t c = r.in ? col::BLUE_TEXT : 0xCFCFCC;
             // The newest is the one you most likely meant, so it stands out.
-            bg(rows[i], in ? (i == 0 ? 0x223654 : 0x182A42) : (i == 0 ? 0x232935 : 0x1C2129));
+            bg(rows[i], in ? (i == 0 ? 0x2A4949 : 0x223B3C) : (i == 0 ? 0x303030 : 0x303030));
             text(icons[i], r.in ? "\U000F005D" : "\U000F0045");
             fg(icons[i], c);
             text(names[i], r.title);
@@ -1333,7 +1342,7 @@ script:
                   text(id(lbl_inbox_n), std::to_string(s.inbox_count));
                   text(id(lbl_inbox), s.inbox_count == 1 ? "new item to name" : "new items to name");
                   std::string night = std::to_string(s.low_count) + " to buy";
-                  if (s.expiring_count) night += "   ·   #C99A55 " + std::to_string(s.expiring_count) + " to use soon#";
+                  if (s.expiring_count) night += "   ·   #D3A564 " + std::to_string(s.expiring_count) + " to use soon#";
                   text(id(lbl_night_stats), night);
               - if:
                   condition:
