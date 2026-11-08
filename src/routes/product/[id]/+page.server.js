@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db.js';
 import {
 	product, updateProduct, deleteProduct, mergeProduct, barcodesFor, addBarcode, removeBarcode,
-	itemsFor, removeItem, places, adjust, onHand, relookup, moveProduct, setInUse, lend, returned, activeLoan
+	itemsFor, removeItem, places, adjust, onHand, relookup, moveProduct, setInUse, lend, returned, activeLoan, savePhoto
 } from '$lib/server/inventory.js';
 
 function ago(ts) {
@@ -44,6 +44,12 @@ function firstSeen(id) {
 const id = (params) => Number(params.id);
 
 export const actions = {
+	/** A photo the phone already shrank to a JPEG: for things Open Food Facts has no picture of. */
+	photo: async ({ request, params }) => {
+		const m = /^data:image\/jpeg;base64,(.+)$/.exec(String((await request.formData()).get('photo') || ''));
+		if (!m) return fail(400, { photoError: 'That photo didn’t come through. Try again.' });
+		await savePhoto(id(params), Buffer.from(m[1], 'base64'));
+	},
 	save: async ({ request, params }) => {
 		const f = Object.fromEntries(await request.formData());
 		if (!String(f.name || '').trim()) return fail(400, { error: 'Name is required' });

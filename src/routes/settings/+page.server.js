@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { tree, addLocation, renameLocation, deleteLocation } from '$lib/server/inventory.js';
+import { tree, addLocation, renameLocation } from '$lib/server/inventory.js';
 import { haEnabled, notifyEnabled } from '$lib/server/ha.js';
 
 export function load() {
@@ -32,12 +32,5 @@ export const actions = {
 	rename: async ({ request }) => {
 		const f = await request.formData();
 		if (name(f)) renameLocation(Number(f.get('id')), name(f));
-	},
-	delete: async ({ request }) => {
-		try {
-			deleteLocation(Number((await request.formData()).get('id')));
-		} catch (e) {
-			return fail(400, { error: e.message });
-		}
 	}
 };

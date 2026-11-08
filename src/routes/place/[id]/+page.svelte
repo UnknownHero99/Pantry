@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import PrintPanel from '$lib/PrintPanel.svelte';
+	import { shrinkPhoto } from '$lib/photo.js';
 
 	let { data, form } = $props();
 	const n = $derived(data.node);
@@ -24,17 +25,10 @@
 	let busy = $state(false);
 	let nameBox = $state();
 
-	/** Shrink the phone's photo to 640 px before it leaves the phone. */
 	async function onPhoto(e) {
 		const file = e.currentTarget.files?.[0];
 		if (!file) return;
-		const bmp = await createImageBitmap(file);
-		const s = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
-		const cv = document.createElement('canvas');
-		cv.width = Math.round(bmp.width * s);
-		cv.height = Math.round(bmp.height * s);
-		cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
-		photo = cv.toDataURL('image/jpeg', 0.8);
+		photo = await shrinkPhoto(file);
 		setTimeout(() => nameBox?.focus(), 0);
 	}
 

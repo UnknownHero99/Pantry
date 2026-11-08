@@ -22,8 +22,21 @@ function dayLabel(d, now = new Date()) {
 }
 
 /**
- * History grouped by day. Packing 8 bags logs 8 events; they show as one
- * "Beef mince ×8 packed" row, and undo takes them all back.
+ * Back-to-back events that read as one: packing 8 bags, tapping + six times,
+ * scanning four cans in. Same product, place, device and direction, a few
+ * minutes apart at most (`prev` is the newer one: history runs newest first).
+ */
+function sameRun(prev, e) {
+	if (!prev || prev.type !== e.type || prev.product_id !== e.product_id || !!prev.undone !== !!e.undone) return false;
+	if (e.type === 'pack') return prev.ts.slice(0, 16) === e.ts.slice(0, 16);
+	if (!['adjust', 'in', 'out'].includes(e.type) || drift(e) || drift(prev)) return false;
+	const gap = local(prev.firstTs ?? prev.ts) - local(e.ts);
+	return prev.location_id === e.location_id && prev.device === e.device && Math.sign(prev.delta) === Math.sign(e.delta) && gap <= 5 * 60000;
+}
+
+/**
+ * History grouped by day, with runs of the same thing as one row ("Beef mince
+ * ×8 packed", "Argeta · count fixed +6"); undo takes the whole run back.
  */
 export function load({ url }) {
 	const filter = FILTERS[url.searchParams.get('f')] ? url.searchParams.get('f') : 'all';
@@ -31,10 +44,8 @@ export function load({ url }) {
 	const rows = [];
 	for (const e of all.filter(FILTERS[filter])) {
 		const prev = rows.at(-1);
-		if (
-			e.type === 'pack' && prev?.type === 'pack' && prev.product_id === e.product_id &&
-			prev.ts.slice(0, 16) === e.ts.slice(0, 16) && !!prev.undone === !!e.undone
-		) {
+		if (sameRun(prev, e)) {
+			prev.firstTs = e.ts;
 			prev.ids.push(e.id);
 			prev.delta += e.delta;
 			continue;

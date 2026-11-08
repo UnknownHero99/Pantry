@@ -13,7 +13,7 @@ export function load({ url }) {
 		tree: all,
 		spaceId: space.id,
 		homeId: home.id,
-		expiring: expiring(14),
+		expiring: expiring(),
 		garageLow: shoppingList('garage').length,
 		lentOut: db.prepare('SELECT COUNT(*) AS n FROM loans WHERE returned_at IS NULL').get().n
 	};

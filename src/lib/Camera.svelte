@@ -15,8 +15,11 @@
 
 	onMount(() => {
 		if (!('BarcodeDetector' in window)) {
-			err = 'This browser can’t read barcodes with the camera. Chrome on Android can; here, type the code.';
+			err = matchMedia('(pointer: fine)').matches
+				? 'No camera scanning in this browser. Type the code, or scan with a USB barcode scanner.'
+				: 'This browser can’t read barcodes with the camera. Chrome on Android can; here, type the code.';
 			typing = true;
+			setTimeout(() => input?.focus(), 0);
 			return;
 		}
 		let stream, raf, stopped = false;
@@ -84,7 +87,24 @@
 		if (manual.trim()) onscan(manual.trim());
 		manual = '';
 	}
+
+	// A USB barcode scanner types the code and presses Enter. Typing anywhere
+	// on this page goes into the code box, so it works without clicking it first.
+	function onkey(e) {
+		if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || e.key === ' ') return;
+		if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+		typing = true;
+		if (input) input.focus();
+		else {
+			// The box isn't there yet: keep this key, the rest follow once it is.
+			manual += e.key;
+			e.preventDefault();
+			setTimeout(() => input?.focus(), 0);
+		}
+	}
 </script>
+
+<svelte:window onkeydown={onkey} />
 
 <div class="cam" class:off={err}>
 	{#if !err}
@@ -103,7 +123,7 @@
 </div>
 {#if typing}
 	<form class="manual" onsubmit={submit}>
-		<input bind:this={input} type="text" inputmode="numeric" placeholder="Barcode or PNTRY label code" bind:value={manual} aria-label="Barcode" />
+		<input bind:this={input} type="text" inputmode="numeric" placeholder="Barcode or label code" bind:value={manual} aria-label="Barcode" />
 		<button style="width: auto">Go</button>
 	</form>
 {/if}
@@ -139,4 +159,8 @@
 	.over.right svg { width: 22px; height: 22px; }
 	.over.lit { background: #fff; color: #0e1116; }
 	.manual { display: flex; gap: 8px; margin-top: 12px; }
+	/* PC: a card in the page rather than edge to edge like a phone camera. */
+	@media (min-width: 960px) {
+		.cam { margin: 0; border-radius: 16px; }
+	}
 </style>

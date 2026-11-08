@@ -1,6 +1,8 @@
 <script>
+	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import PrintPanel from '$lib/PrintPanel.svelte';
+	import { shrinkPhoto } from '$lib/photo.js';
 	import { amount, fmtDate, ago, daysUntil } from '$lib/format.js';
 
 	let { data, form } = $props();
@@ -35,6 +37,17 @@
 	// Back to the space it lives in: Garage things go back to the Garage.
 	const homeSpace = $derived(data.locations.find((l) => l.id === (p.location_id ?? data.stock.find((s) => s.qty > 0)?.location_id)));
 	const since = (ts) => ts.slice(0, 10).split('-').reverse().join('.');
+
+	// Tap the picture to take one: home-made food and odd brands have none from Open Food Facts.
+	let photo = $state('');
+	let photoForm = $state();
+	async function onPhoto(e) {
+		const file = e.currentTarget.files?.[0];
+		if (!file) return;
+		photo = await shrinkPhoto(file);
+		await tick(); // the hidden input has to hold it before the form goes
+		photoForm.requestSubmit();
+	}
 
 	function togglePick(id) {
 		const n = new Set(picked);
@@ -146,15 +159,22 @@
 	{/if}
 
 	<div style="display: flex; gap: 14px; align-items: center">
-		{#if p.image}
-			<img src={p.image} alt="" style="width: 72px; height: 72px; border-radius: 14px; object-fit: cover; flex: none" />
-		{:else}
-			<span class="thumb" style="width: 72px; height: 72px; border-radius: 14px">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					{#if p.homemade}<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" />{:else}<path d="M8 8v8M11 8v8M14 8v5M17 8v8" />{/if}
-				</svg>
-			</span>
-		{/if}
+		<form method="POST" action="?/photo" bind:this={photoForm} use:enhance={() => async ({ update }) => { await update({ reset: false }); photo = ''; }}>
+			<label class="snap" aria-label={p.image ? 'Take a new photo' : 'Take a photo'}>
+				{#if photo || p.image}
+					<img src={photo || p.image} alt="" />
+				{:else}
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						{#if p.homemade}<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" />{:else}<path d="M8 8v8M11 8v8M14 8v5M17 8v8" />{/if}
+					</svg>
+				{/if}
+				<span class="cam" aria-hidden="true">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
+				</span>
+				<input type="file" accept="image/*" capture="environment" onchange={onPhoto} />
+			</label>
+			<input type="hidden" name="photo" value={photo} />
+		</form>
 		<div style="flex: 1; min-width: 0">
 			<h1 class="page" style="font-size: 24px">{p.name}</h1>
 			{#if meta}<div class="muted">{meta}</div>{/if}
@@ -167,6 +187,7 @@
 		{/if}
 	</div>
 
+	{#if form?.photoError}<p class="note bad">{form.photoError}</p>{/if}
 	{#if p.fits}<p class="muted" style="margin: 10px 0 0">Fits <b style="color: var(--ink)">{p.fits}</b></p>{/if}
 
 	{#if !p.counted}
@@ -341,3 +362,12 @@
 		</form>
 	</details>
 {/if}
+
+<style>
+	.snap { position: relative; display: grid; place-items: center; width: 72px; height: 72px; flex: none; border-radius: 14px; background: var(--surface-2); color: var(--muted); cursor: pointer; }
+	.snap > svg { width: 24px; height: 24px; }
+	.snap img { width: 100%; height: 100%; border-radius: 14px; object-fit: cover; }
+	.snap input { position: absolute; inset: 0; opacity: 0; }
+	.cam { position: absolute; right: -4px; bottom: -4px; width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: var(--surface-3); color: var(--ink); border: 2px solid var(--bg); }
+	.cam svg { width: 14px; height: 14px; }
+</style>

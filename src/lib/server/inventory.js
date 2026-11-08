@@ -802,9 +802,10 @@ export function inventory() {
 	).all();
 	const products = q('SELECT * FROM products ORDER BY name COLLATE NOCASE').all();
 	const byProduct = new Map(products.map((p) => [p.id, { ...p, total: 0, at: {}, amount_total: 0 }]));
-	for (const r of q("SELECT product_id, SUM(amount) AS a FROM items WHERE status = 'in' GROUP BY product_id").all()) {
+	// Home-made: how old the oldest package is, and the first use-by date.
+	for (const r of q("SELECT product_id, SUM(amount) AS a, MIN(packed_at) AS oldest, MIN(best_before) AS use_by FROM items WHERE status = 'in' GROUP BY product_id").all()) {
 		const p = byProduct.get(r.product_id);
-		if (p) p.amount_total = r.a ?? 0;
+		if (p) Object.assign(p, { amount_total: r.a ?? 0, oldest: r.oldest, use_by: r.use_by });
 	}
 	for (const c of counts) {
 		const p = byProduct.get(c.product_id);
@@ -836,7 +837,10 @@ export function shoppingList(list = 'groceries') {
 		}));
 }
 
-export function expiring(withinDays = 30) {
+/** "Use soon" means within this many days, on the phone, the wall and in HA alike. */
+export const SOON_DAYS = 14;
+
+export function expiring(withinDays = SOON_DAYS) {
 	const where = new Map(tree().map((l) => [l.id, l.path]));
 	return q(
 		`SELECT i.*, p.name FROM items i JOIN products p ON p.id = i.product_id
@@ -867,7 +871,7 @@ function groupExpiring(items) {
 /** Compact status for the wall display's idle screen and HA REST sensors. */
 export function summary() {
 	const low = shoppingList();
-	const soon = expiring(30);
+	const soon = expiring();
 	const groups = groupExpiring(soon);
 	return {
 		low_count: low.length,

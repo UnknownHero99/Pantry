@@ -324,6 +324,38 @@ details > summary::-webkit-details-marker { display: none; }
 	background: var(--warn); color: #0e1116; font-size: 11px; font-weight: 700;
 	display: grid; place-items: center;
 }
+.nav .brand, .nav a.desk { display: none; }
+
+/* ── PC: the nav becomes a sidebar and pages get some room ───────────── */
+@media (min-width: 960px) {
+	body { padding-left: 220px; }
+	.shell { max-width: 760px; padding: 32px 40px 48px; }
+	/* Lists (Stock) use the width; forms stay narrow enough to read. */
+	.shell:has(.wide) { max-width: 1180px; }
+	.shell:has(.edge) { padding-top: 32px; }
+	/* Inbox, History and Settings are in the sidebar, so no "‹ More" back to a menu. */
+	.back[href='/more'] { display: none; }
+
+	.nav { top: 0; right: auto; width: 220px; border-top: 0; border-right: 1px solid var(--border); padding: 0; }
+	.nav-in { height: 100%; max-width: none; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 20px 12px; }
+	.nav .brand { display: block; order: -2; padding: 4px 12px 18px; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: var(--ink); }
+	.nav a { flex-direction: row; gap: 12px; height: 44px; padding: 0 12px; border-radius: 10px; font-size: 15px; }
+	.nav a svg { width: 20px; height: 20px; }
+	.nav a.desk { display: flex; }
+	.nav a.more { display: none; }
+	.nav a.on { background: var(--accent-soft); }
+	.nav a:not(.on):not(.scan):hover { background: var(--surface-2); color: var(--ink); }
+	/* Scan: the first button in the list instead of a floating one. */
+	.nav a.scan { order: -1; margin: 0 0 14px; justify-content: center; background: var(--accent); color: #fff; }
+	.nav a.scan .fab { display: contents; }
+	.nav a.scan .fab svg { width: 20px; height: 20px; }
+	.nav a.scan.on { color: #fff; box-shadow: 0 0 0 2px var(--accent-text); }
+	.badge { position: static; margin-left: auto; }
+
+	/* A mouse can hover: show what's clickable. */
+	a.row:hover, .row:has(> a.info:hover), a.box:hover, a.tile:hover { background: var(--surface-2); }
+	.row { border-radius: 10px; padding-left: 8px; padding-right: 8px; }
+}
 
 /* ── scan result card (same as the wall's) ───────────────────────────── */
 .result {

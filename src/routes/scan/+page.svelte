@@ -159,7 +159,7 @@
 			<div><ScanResult r={last} {onadjust} {onundo} {onfix} /></div>
 		{:else}
 			<p class="muted" style="text-align: center; margin: 22px 0">
-				{mode === 'in' ? 'Scan each item as you put it away.' : 'Point the camera at a barcode, a food label or a box label.'}
+				{mode === 'in' ? 'Scan each item as you put it away.' : 'Scan a barcode, a food label or a box label.'}
 			</p>
 		{/if}
 

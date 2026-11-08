@@ -1,7 +1,8 @@
 <script>
 	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
-	import { amount, daysUntil } from '$lib/format.js';
+	import { goto, pushState } from '$app/navigation';
+	import { page } from '$app/state';
+	import { amount, age, daysUntil, shortDate } from '$lib/format.js';
 
 	let { data } = $props();
 
@@ -10,7 +11,18 @@
 	let place = $state(0); // top-level place id within the space, 0 = all
 	let open = $state(''); // `${product}-${location}` whose −/+ is showing
 	let showEmpty = $state(false);
-	let picking = $state(false); // the space switcher sheet
+	// The space switcher sheet is a history entry, so the phone's back gesture closes it.
+	const picking = $derived(!!page.state.picking);
+	const openPicker = () => pushState('', { picking: true });
+	const closePicker = () => history.back();
+
+	// The −/+ folds back into the count after a few seconds without a tap.
+	let closeTimer;
+	function stepper(key) {
+		open = key;
+		clearTimeout(closeTimer);
+		closeTimer = setTimeout(() => (open = ''), 4000);
+	}
 
 	const byId = $derived(new Map(data.tree.map((l) => [l.id, l])));
 	const space = $derived(byId.get(data.spaceId));
@@ -34,7 +46,7 @@
 	let sections = $derived(
 		children(data.spaceId).map((pl) => ({
 			...pl,
-			rows: data.products.filter((p) => p.at[pl.id]).map((p) => ({ ...p, here: p.at[pl.id] })),
+			rows: data.products.filter((p) => p.at[pl.id]).map((p) => ({ ...p, here: p.at[pl.id] })).sort(eatFirst),
 			inner: children(pl.id).map((b) => {
 				const ids = within(b.id);
 				const things = data.products.filter((p) => Object.keys(p.at).some((k) => ids.has(Number(k))));
@@ -43,7 +55,11 @@
 		}))
 	);
 	let shown = $derived(sections.filter((s) => (s.rows.length || s.inner.length) && (!place || s.id === place)));
-	let items = $derived(data.products.filter((p) => inSpace(p, data.spaceId)).reduce((n, p) => n + (p.counted ? p.total : 1), 0));
+	// Home-made first, oldest package first: that's what to eat next. The rest stay A–Z.
+	const eatFirst = (a, b) => b.homemade - a.homemade || (a.homemade ? (a.oldest ?? '').localeCompare(b.oldest ?? '') : 0);
+	const units = (sid) => data.products.filter((p) => inSpace(p, sid)).reduce((n, p) => n + (p.counted ? p.total : 1), 0);
+	const noun = (s, n) => (s?.list === 'garage' ? (n === 1 ? 'thing' : 'things') : n === 1 ? 'item' : 'items');
+	let items = $derived(units(data.spaceId));
 
 	// Search looks everywhere, and answers with the path.
 	let found = $derived(search.trim() ? data.products.filter((p) => p.total > 0 && match(p)) : []);
@@ -69,23 +85,45 @@
 	const low = (p) => p.min_stock > 0 && p.total < p.min_stock;
 	const pretty = (c) => (c?.length === 13 ? `${c[0]} ${c.slice(1, 7)} ${c.slice(7)}` : c);
 	const title = (p) => (p.needs_review ? 'New item · name it' : p.name);
+	// Home-made: the weight, then the use-by once it's within a month, else how old the oldest package is.
+	const packed = (p) => {
+		if (p.use_by && daysUntil(p.use_by) <= 30) return `use by ${shortDate(p.use_by)}`;
+		if (!p.oldest) return '';
+		const a = age(p.oldest);
+		return a === 'today' ? 'packed today' : `${a} old`;
+	};
 	const meta = (p) =>
 		p.needs_review
 			? pretty(p.name.replace(/^Unknown /, ''))
 			: p.homemade
-				? amount(p.amount_total, p.unit) || 'packages'
+				? [amount(p.amount_total, p.unit) || 'packages', packed(p)].filter(Boolean).join(' · ')
 				: [p.brand?.toLowerCase() === p.name.toLowerCase() ? '' : p.brand, p.size, p.fits ? `fits ${p.fits}` : ''].filter(Boolean).join(' · ');
 	const status = (p) => (p.loan ? `Lent to ${p.loan.person}` : p.taken_at ? 'In use' : '');
 	const initials = (n) => n.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 	const keep = () => async ({ update }) => update({ reset: false, invalidateAll: true });
 	const days = (d) => (d < 0 ? 'expired' : d === 0 ? 'today' : `${d} d`);
 	const spaceSub = (s) => children(s.id).filter((c) => !/unsorted/i.test(c.name)).map((c) => c.name).join(' · ');
-	const spaceCount = (s) => data.products.filter((p) => inSpace(p, s.id)).length;
+
+	// Only what needs looking at; nothing at all when everything's fine.
+	let tiles = $derived(
+		garage
+			? [
+					{ k: 'TO BUY', v: data.garageLow, href: '/shopping?list=garage' },
+					{ k: 'LENT OUT', v: data.lentOut, href: '#lent', warn: true },
+					{ k: 'UNSORTED', v: unsortedCount, href: unsorted ? `/place/${unsorted.id}` : '#', warn: true }
+				]
+			: [
+					{ k: 'TO BUY', v: data.shopCount - data.garageLow, href: '/shopping' },
+					{ k: 'USE SOON', v: data.expiring.length, href: '#soon', warn: true },
+					{ k: 'TO NAME', v: data.inboxCount, href: '/inbox', warn: true }
+				]
+	);
+	let due = $derived(tiles.filter((t) => t.v));
 
 	function pickSpace(s) {
-		picking = false;
 		place = 0;
-		goto(s.id === data.homeId ? '/' : `/?space=${s.id}`, { noScroll: true, keepFocus: true });
+		// Replaces the sheet's history entry, so back doesn't reopen it.
+		goto(s.id === data.homeId ? '/' : `/?space=${s.id}`, { noScroll: true, keepFocus: true, replaceState: true });
 	}
 </script>
 
@@ -106,7 +144,7 @@
 		{#if !p.counted}
 			{#if status(p)}<span class="tag-chip" class:lent={p.loan}>{status(p)}</span>{/if}
 		{:else if open === key && !p.homemade}
-			<form method="POST" action="?/adjust" use:enhance={keep} class="stepper">
+			<form method="POST" action="?/adjust" use:enhance={() => (stepper(key), keep())} class="stepper">
 				<input type="hidden" name="product_id" value={p.id} />
 				<input type="hidden" name="location_id" value={locId} />
 				<button name="delta" value="-1" aria-label="One less {p.name}">−</button>
@@ -114,7 +152,7 @@
 				<button name="delta" value="1" aria-label="One more {p.name}">+</button>
 			</form>
 		{:else}
-			<button class="qty" class:low={low(p)} aria-label="{p.at[locId]} {p.name}{p.homemade ? '' : ', tap to change'}" onclick={() => !p.homemade && (open = key)}>
+			<button class="qty" class:low={low(p)} class:adj={!p.homemade} aria-label="{p.at[locId]} {p.name}{p.homemade ? '' : ', tap to change'}" onclick={() => !p.homemade && stepper(key)}>
 				{p.at[locId]}
 				{#if low(p)}<span class="tag">LOW · MIN {p.min_stock}</span>{/if}
 			</button>
@@ -122,25 +160,26 @@
 	</div>
 {/snippet}
 
-<div class="head">
-	<button class="space-pick" onclick={() => (picking = true)} aria-haspopup="dialog">
+<div class="head wide">
+	<button class="space-pick" onclick={openPicker} aria-haspopup="dialog">
 		{space?.name}
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
 	</button>
-	<span class="aside">{items} {garage ? 'things' : `item${items === 1 ? '' : 's'}`}</span>
+	<span class="aside">{items} {noun(space, items)}</span>
 </div>
 
-<div class="tiles">
-	{#if garage}
-		<a class="tile" href="/shopping?list=garage"><div class="k">TO BUY</div><div class="v">{data.garageLow}</div></a>
-		<a class="tile" href="#lent" onclick={() => (search = '', place = 0)}><div class="k">LENT OUT</div><div class="v" class:warn={data.lentOut}>{data.lentOut}</div></a>
-		<a class="tile" class:warn={unsortedCount} href={unsorted ? `/place/${unsorted.id}` : '#'}><div class="k">UNSORTED</div><div class="v">{unsortedCount}</div></a>
-	{:else}
-		<a class="tile" href="/shopping"><div class="k">TO BUY</div><div class="v">{data.shopCount - data.garageLow}</div></a>
-		<a class="tile" href="#soon"><div class="k">USE SOON</div><div class="v" class:warn={data.expiring.length}>{data.expiring.length}</div></a>
-		<a class="tile" class:warn={data.inboxCount} href="/inbox"><div class="k">TO NAME</div><div class="v">{data.inboxCount}</div></a>
-	{/if}
-</div>
+{#if due.length}
+	<div class="tiles" class:one={due.length === 1} style:grid-template-columns="repeat({due.length}, minmax(0, 1fr))">
+		{#each due as t (t.k)}
+			<a class="tile" class:warn={t.warn} href={t.href} onclick={() => (search = '', place = 0)}><div class="k">{t.k}</div><div class="v">{t.v}</div></a>
+		{/each}
+	</div>
+{:else}
+	<p class="allgood">
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+		{garage ? 'Nothing to buy, nothing lent out' : 'Nothing to buy, use up or name'}
+	</p>
+{/if}
 
 <label class="search">
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
@@ -198,27 +237,30 @@
 		</section>
 	{/if}
 
+	<div class="places">
 	{#each shown as s (s.id)}
-		<div class="caps"><span>{s.name}</span><span>{s.rows.length + s.inner.length || ''}</span></div>
-		{#if s.inner.length}
-			<div class="boxes">
-				{#each s.inner as b (b.id)}
-					<a class="box" href="/place/{b.id}">
-						<span class="code">{b.kind === 'box' ? b.code || '□' : '▤'}</span>
-						<span style="flex: 1; min-width: 0">
-							<span class="nm">{b.name}</span>
-							<span class="sm">{b.things.length ? b.things.slice(0, 4).map((t) => t.name).join(', ') + (b.things.length > 4 ? '…' : '') : 'Empty'}</span>
-						</span>
-						<span class="muted">{b.things.length}</span>
-					</a>
-				{/each}
-			</div>
-		{/if}
-		{#if s.rows.length}
-			<div class="rows">
-				{#each s.rows as p (p.id)}{@render row(p, s.id)}{/each}
-			</div>
-		{/if}
+		<section>
+			<div class="caps"><span>{s.name}</span><span>{s.rows.length + s.inner.length || ''}</span></div>
+			{#if s.inner.length}
+				<div class="boxes">
+					{#each s.inner as b (b.id)}
+						<a class="box" href="/place/{b.id}">
+							<span class="code">{b.kind === 'box' ? b.code || '□' : '▤'}</span>
+							<span style="flex: 1; min-width: 0">
+								<span class="nm">{b.name}</span>
+								<span class="sm">{b.things.length ? b.things.slice(0, 4).map((t) => t.name).join(', ') + (b.things.length > 4 ? '…' : '') : 'Empty'}</span>
+							</span>
+							<span class="muted">{b.things.length}</span>
+						</a>
+					{/each}
+				</div>
+			{/if}
+			{#if s.rows.length}
+				<div class="rows">
+					{#each s.rows as p (p.id)}{@render row(p, s.id)}{/each}
+				</div>
+			{/if}
+		</section>
 	{:else}
 		<section class="panel" style="margin-top: 14px">
 			{#if garage}
@@ -230,6 +272,7 @@
 			{/if}
 		</section>
 	{/each}
+	</div>
 
 	{#if empty.length && !place}
 		<div class="caps">
@@ -250,8 +293,19 @@
 	{/if}
 {/if}
 
+<svelte:window
+	onkeydown={(e) => {
+		if (picking && e.key === 'Escape') closePicker();
+		// On a PC, "/" jumps to search, as on most sites.
+		else if (e.key === '/' && !e.ctrlKey && !e.metaKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) {
+			e.preventDefault();
+			searchBox?.focus();
+		}
+	}}
+/>
+
 {#if picking}
-	<button class="scrim" aria-label="Close" onclick={() => (picking = false)}></button>
+	<button class="scrim" aria-label="Close" onclick={closePicker}></button>
 	<div class="sheet" role="dialog" aria-modal="true" aria-label="Choose a space">
 		<div class="grip"></div>
 		<div class="caps" style="margin-top: 0"><span>Spaces</span></div>
@@ -259,12 +313,12 @@
 			<button class="space" class:on={s.id === data.spaceId} onclick={() => pickSpace(s)}>
 				<span style="flex: 1; min-width: 0">
 					<span class="nm">{s.name}{#if s.home}<span class="home">HOME</span>{/if}</span>
-					<span class="sm">{spaceSub(s) || 'No places yet'} · {spaceCount(s)} {s.list === 'garage' ? 'things' : 'items'}</span>
+					<span class="sm">{spaceSub(s) || 'No places yet'} · {units(s.id)} {noun(s, units(s.id))}</span>
 				</span>
 				{#if s.list === 'garage' && data.lentOut}<span class="muted" style="color: var(--warn)">{data.lentOut} lent out</span>{/if}
 			</button>
 		{/each}
-		<button class="linkish" style="font-size: 16px; padding: 14px 4px; text-align: left" onclick={() => { picking = false; searchBox?.focus(); }}>Search everywhere</button>
+		<button class="linkish" style="font-size: 16px; padding: 14px 4px; text-align: left" onclick={() => { closePicker(); searchBox?.focus(); }}>Search everywhere</button>
 		<a href="/settings#places" class="muted" style="padding: 4px 4px 0">+ Add a space or place</a>
 	</div>
 {/if}
@@ -275,6 +329,11 @@
 		font-size: 30px; font-weight: 700; letter-spacing: -0.5px; gap: 6px;
 	}
 	.space-pick svg { width: 22px; height: 22px; color: var(--muted); }
+	.allgood { display: flex; align-items: center; gap: 8px; margin: 10px 2px 0; font-size: 14px; color: var(--muted); }
+	.allgood svg { width: 18px; height: 18px; flex: none; color: var(--good); }
+	.tiles.one .tile { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; }
+	.qty.adj { align-items: center; padding: 0 10px; border-radius: 12px; background: var(--surface-2); }
+	.qty.adj.low { padding: 4px 10px; }
 	.tag-chip { flex: none; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px; background: var(--surface-2); color: var(--ink-2); }
 	.tag-chip.lent { background: var(--warn-bg); color: var(--warn); }
 	.boxes { display: flex; flex-direction: column; gap: 6px; }
@@ -296,5 +355,11 @@
 	.space.on { border-color: var(--accent-text); background: var(--accent-soft); }
 	.space .nm { display: block; font-size: 17px; font-weight: 700; }
 	.space .sm { display: block; font-size: 13px; color: var(--muted); }
+	/* PC: places side by side; the space switcher is a dialog, not a bottom sheet. */
+	@media (min-width: 960px) {
+		.places { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 0 32px; align-items: start; }
+		.sheet { bottom: auto; top: 12vh; left: 220px; width: 440px; border-radius: 22px; padding-bottom: 20px; box-shadow: var(--shadow); }
+		.grip { display: none; }
+	}
 	.home { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--accent-text); margin-left: 8px; }
 </style>

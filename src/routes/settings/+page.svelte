@@ -16,8 +16,22 @@
 	}
 
 	const sample = [{ id: 0, name: 'Test label', amount: 500, unit: 'g', packed_at: today(), best_before: addDays(today(), 120), location: 'Freezer', note: 'Darkness check' }];
-	const keep = () => async ({ update }) => update({ reset: false });
+	// Names save when you leave the field; the field flashes green.
+	let saved = $state(0);
+	const rename = (id) => () => async ({ update }) => {
+		await update({ reset: false });
+		saved = id;
+		setTimeout(() => saved === id && (saved = 0), 1500);
+	};
+	const submit = (e) => e.currentTarget.form.requestSubmit();
 </script>
+
+{#snippet nameField(l, label)}
+	<form method="POST" action="?/rename" use:enhance={rename(l.id)} class:saved={saved === l.id} style="flex: 1; min-width: 0">
+		<input type="hidden" name="id" value={l.id} />
+		<input type="text" name="name" value={l.name} aria-label={label} onchange={submit} enterkeyhint="done" style:font-weight={l.kind === 'space' ? 700 : null} />
+	</form>
+{/snippet}
 
 <a class="back" href="/more">
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
@@ -27,33 +41,19 @@
 
 <section class="card" id="places">
 	<h2>Spaces and places</h2>
-	<div class="sub">Pantry is home: the app opens there and the wall scanner files into its first place. Boxes are added on a shelf's own page.</div>
+	<div class="sub">Pantry is home: the app opens there and the wall scanner files into its first place. Tap a name to rename it; open a place to add boxes or delete it.</div>
 	{#each data.tree.filter((l) => l.kind === 'space') as sp (sp.id)}
 		<div class="space-block">
 			<div style="display: flex; align-items: center; gap: 8px">
-				<form method="POST" action="?/rename" use:enhance={keep} style="display: flex; gap: 8px; flex: 1; min-width: 0">
-					<input type="hidden" name="id" value={sp.id} />
-					<input type="text" name="name" value={sp.name} aria-label="Space name" style="font-weight: 700; background: var(--surface-2)" />
-					<button class="icon-btn" style="height: 48px; width: 48px" aria-label="Save name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg></button>
-				</form>
+				{@render nameField(sp, 'Space name')}
 				<span class="badge-list">{sp.home ? 'HOME · ' : ''}{sp.list === 'garage' ? 'GARAGE LIST' : 'GROCERIES'}</span>
 			</div>
 			{#each data.tree.filter((l) => l.space_id === sp.id && l.kind === 'place') as pl (pl.id)}
 				<div style="display: flex; gap: 8px; margin: 8px 0 0 {Math.min(pl.depth, 3) * 14}px">
-					<form method="POST" action="?/rename" use:enhance={keep} style="display: flex; gap: 8px; flex: 1; min-width: 0">
-						<input type="hidden" name="id" value={pl.id} />
-						<input type="text" name="name" value={pl.name} aria-label="Place name" style="background: var(--surface-2)" />
-						<button class="icon-btn" style="height: 48px; width: 48px" aria-label="Save name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg></button>
-					</form>
+					{@render nameField(pl, 'Place name')}
 					<a class="icon-btn" href="/place/{pl.id}" aria-label="Open {pl.name}" style="height: 48px; width: 48px; display: grid; place-items: center">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
 					</a>
-					<form method="POST" action="?/delete" use:enhance>
-						<input type="hidden" name="id" value={pl.id} />
-						<button class="icon-btn" style="height: 48px; width: 48px" aria-label="Delete {pl.name}">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-						</button>
-					</form>
 				</div>
 			{/each}
 			<form method="POST" action="?/addPlace" use:enhance class="actions" style="margin-top: 8px">
@@ -111,5 +111,7 @@
 
 <style>
 	.space-block { border-top: 1px solid var(--surface-2); padding-top: 12px; margin-top: 12px; }
+	form input[type='text'] { background: var(--surface-2); transition: box-shadow 0.3s; }
+	.saved input[type='text'] { box-shadow: inset 0 0 0 2px var(--good); }
 	.badge-list { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--muted); }
 </style>
