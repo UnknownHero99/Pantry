@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import { WIDTH } from './catprinter.js';
 import { HEAD, FEED_DOTS_PER_MM } from './p15printer.js';
-import { itemCode, boxCode, amount, fmtDate } from './format.js';
+import { itemCode, boxCode, itemLink, boxLink, amount, fmtDate } from './format.js';
 
 const H = 216; // ≈27 mm at 8 dots/mm
 
@@ -30,17 +30,19 @@ function wrap(ctx, text, maxWidth, maxLines) {
 /**
  * Draw one package label as a pure black/white canvas, in the layout of the
  * printer it's for: 'cat' (48 mm receipt paper) or 'p15' (12 mm label, `lengthMm` long).
+ * With `origin`, the QR is a link a phone camera opens; without, the bare code.
  */
-export function renderLabel(item, kind = 'cat', lengthMm = 40) {
-	if (item.box) return renderBox(item, kind, lengthMm);
-	return kind === 'p15' ? renderStrip(item, lengthMm) : renderReceipt(item);
+export function renderLabel(item, kind = 'cat', lengthMm = 40, origin = '') {
+	if (item.box) return renderBox(item, kind, lengthMm, origin ? boxLink(origin, item.id) : boxCode(item.id));
+	const qr = origin ? itemLink(origin, item.id) : itemCode(item.id);
+	return kind === 'p15' ? renderStrip(item, lengthMm, qr) : renderReceipt(item, qr);
 }
 
 /**
- * Box label: QR (PNTRY:B:…), the box number big, its name and where it lives.
+ * Box label: QR (a link to the box), the box number big, its name and where it lives.
  * item = { box: true, id, code: 'A·2', name: 'Power tools', path: 'Garage › Shelf A' }
  */
-function renderBox(item, kind, lengthMm) {
+function renderBox(item, kind, lengthMm, qr) {
 	const strip = kind === 'p15';
 	const W = strip ? Math.round(lengthMm * FEED_DOTS_PER_MM) : WIDTH;
 	const Hh = strip ? HEAD : 150;
@@ -53,11 +55,11 @@ function renderBox(item, kind, lengthMm) {
 	ctx.fillStyle = '#000';
 	ctx.textBaseline = 'top';
 
-	const modules = QRCode.create(boxCode(item.id), { errorCorrectionLevel: 'M' }).modules.size + 2;
+	const modules = QRCode.create(qr, { errorCorrectionLevel: 'M' }).modules.size + 2;
 	const scale = Math.floor((Hh - 4) / modules);
 	const side = modules * scale;
 	const edge = strip ? 8 : 6;
-	drawQr(ctx, boxCode(item.id), edge, Math.floor((Hh - side) / 2), scale);
+	drawQr(ctx, qr, edge, Math.floor((Hh - side) / 2), scale);
 
 	const x = edge + side + 8;
 	const w = W - x - edge;
@@ -108,7 +110,7 @@ function drawQr(ctx, text, x, y, scale) {
  *  │      │ Use by 26.04.27           │
  *  └──────┴───────────────────────────┘
  */
-function renderStrip(item, lengthMm) {
+function renderStrip(item, lengthMm, qr) {
 	const W = Math.round(lengthMm * FEED_DOTS_PER_MM);
 	const cv = document.createElement('canvas');
 	cv.width = W;
@@ -120,11 +122,11 @@ function renderStrip(item, lengthMm) {
 	ctx.textBaseline = 'top';
 
 	// One-module quiet zone; integer module size so every module is crisp.
-	const modules = QRCode.create(itemCode(item.id), { errorCorrectionLevel: 'M' }).modules.size + 2;
+	const modules = QRCode.create(qr, { errorCorrectionLevel: 'M' }).modules.size + 2;
 	const scale = Math.floor((HEAD - 4) / modules);
 	const side = modules * scale;
 	const edge = 8; // ≈1 mm clear of the die-cut edge
-	drawQr(ctx, itemCode(item.id), edge, Math.floor((HEAD - side) / 2), scale);
+	drawQr(ctx, qr, edge, Math.floor((HEAD - side) / 2), scale);
 
 	const x = edge + side + 6;
 	const w = W - x - edge;
@@ -160,7 +162,7 @@ function renderStrip(item, lengthMm) {
  *  │ #000123│ Use by 26.02.2027    │
  *  └────────┴──────────────────────┘
  */
-function renderReceipt(item) {
+function renderReceipt(item, code) {
 	const cv = document.createElement('canvas');
 	cv.width = WIDTH;
 	cv.height = H;
@@ -171,7 +173,6 @@ function renderReceipt(item) {
 	ctx.textBaseline = 'top';
 
 	// QR, integer module size so every module is crisp on a 1-bit printer.
-	const code = itemCode(item.id);
 	const qr = QRCode.create(code, { errorCorrectionLevel: 'M' }).modules;
 	const scale = Math.floor(170 / (qr.size + 2));
 	const qx = 6, qy = 8;

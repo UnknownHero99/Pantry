@@ -50,11 +50,12 @@
 {#if msg}<p class="note {ok ? 'good' : 'bad'}">{msg}</p>{/if}
 
 <style>
-	.previews { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; max-height: 50vh; overflow: auto; }
+	/* align-items: flex-start, or the column stretches each canvas to full width. */
+	.previews { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 12px 0; max-height: 50vh; overflow: auto; }
 	.previews :global(canvas) {
 		width: 100%; max-width: 384px; height: auto; display: block;
 		border-radius: 6px; image-rendering: pixelated;
 	}
-	/* P15 labels are small: show them at a size you can read, not stretched. */
-	.previews.strip :global(canvas) { width: auto; max-width: 100%; height: 72px; border-radius: 8px; }
+	/* P15 labels: one screen pixel per printer dot, so they stay crisp; long ones shrink to fit, keeping their shape. */
+	.previews.strip :global(canvas) { width: auto; max-width: 100%; height: 96px; object-fit: contain; object-position: left; border-radius: 8px; }
 </style>

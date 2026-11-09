@@ -13,13 +13,27 @@ export function boxCode(id) {
 	return BOX_PREFIX + String(id).padStart(6, '0');
 }
 
+/**
+ * What a label's QR holds now: a link any phone's camera opens,
+ * HTTPS://PANTRY.EXAMPLE.COM/I/17. Upper case keeps the QR in alphanumeric
+ * mode, small enough for a 12 mm label; the server routes /I/ and /B/ either way.
+ */
+export function itemLink(origin, id) {
+	return `${origin}/I/${id}`.toUpperCase();
+}
+
+export function boxLink(origin, id) {
+	return `${origin}/B/${id}`.toUpperCase();
+}
+
+// Labels printed before the links hold PNTRY:I:000017; both kinds scan.
 export function parseBoxCode(code) {
-	const m = /^PNTRY:B:(\d+)$/i.exec(code.trim());
+	const m = /^(?:PNTRY:B:|https?:\/\/[^/]+\/B\/)(\d+)$/i.exec(code.trim());
 	return m ? Number(m[1]) : null;
 }
 
 export function parseItemCode(code) {
-	const m = /^PNTRY:I:(\d+)$/i.exec(code.trim());
+	const m = /^(?:PNTRY:I:|https?:\/\/[^/]+\/I\/)(\d+)$/i.exec(code.trim());
 	return m ? Number(m[1]) : null;
 }
 

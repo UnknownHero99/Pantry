@@ -6,6 +6,7 @@
  * draws the labels for it and remembers the kind for previews next time.
  */
 import { writable, get } from 'svelte/store';
+import { page } from '$app/state';
 import * as cat from './catprinter.js';
 import * as p15 from './p15printer.js';
 import { renderLabel } from './label.js';
@@ -32,9 +33,9 @@ export const printerKind = stored('printer.kind', 'p15');
 /** Length of one P15 die-cut label, mm. */
 export const labelLength = stored('printer.p15.length', 40, Number);
 
-/** Draw a label for the given (or currently chosen) printer. */
+/** Draw a label for the given (or currently chosen) printer. Its QR links to this app's public address. */
 export function drawLabel(item, kind = get(printerKind)) {
-	return renderLabel(item, kind, get(labelLength));
+	return renderLabel(item, kind, get(labelLength), page.data.origin || location.origin);
 }
 
 /** A failure with a message meant for the user, not the console. */

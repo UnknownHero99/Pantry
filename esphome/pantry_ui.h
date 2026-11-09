@@ -186,11 +186,21 @@ inline bool parse_summary(const std::string &body) {
 
 // ── formatting ─────────────────────────────────────────────────────────
 
-inline bool is_package(const std::string &code) { return code.rfind("PNTRY:I:", 0) == 0 || code.rfind("pntry:i:", 0) == 0; }
+// Package labels: PNTRY:I:000017, or since the labels became links, HTTPS://PANTRY.EXAMPLE.COM/I/17.
+inline bool is_package(const std::string &code) {
+  if (code.rfind("PNTRY:I:", 0) == 0 || code.rfind("pntry:i:", 0) == 0) return true;
+  size_t i = code.rfind("/I/");
+  return i != std::string::npos && code.find("://") != std::string::npos && i + 3 < code.size();
+}
+/** "000017" or "17": the number after the prefix. */
+inline std::string package_no(const std::string &code) {
+  size_t i = code.rfind('/');
+  return code.substr(i != std::string::npos && code.find("://") != std::string::npos ? i + 1 : 8);
+}
 
 /** "8 076809 513753" for an EAN-13, groups of four for anything else. */
 inline std::string pretty_code(const std::string &code) {
-  if (is_package(code)) return "Package #" + code.substr(8);
+  if (is_package(code)) return "Package #" + package_no(code);
   if (code.size() == 13) return code.substr(0, 1) + " " + code.substr(1, 6) + " " + code.substr(7);
   std::string out;
   for (size_t i = 0; i < code.size(); i++) {
@@ -202,7 +212,7 @@ inline std::string pretty_code(const std::string &code) {
 
 /** Short enough for one row of the offline queue. */
 inline std::string short_code(const std::string &code) {
-  if (is_package(code)) return "Package #" + code.substr(8);
+  if (is_package(code)) return "Package #" + package_no(code);
   if (code.size() > 8) return code.substr(0, 1) + " " + code.substr(1, 6) + " …";
   return code;
 }
