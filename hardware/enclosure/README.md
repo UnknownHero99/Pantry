@@ -15,14 +15,14 @@ optional [mainboard](../mainboard) or the SparkFun scanner, see
 | ![Inside](renders/inside.png) | ![Exploded](renders/exploded.png) |
 | Inside, back plate off: the board behind its screen with the plugs on its header and USB-C, the scanner in the mouth, the LED module and the speaker on the floor | Back plate: keyholes, and posts that hold the board by its mounting ears |
 
-Outside about **122 wide × 148 high × 59 deep** (mm, including the back plate).
+Outside about **122 wide × 135 high × 59 deep** (mm, including the back plate).
 
 ## The shape
 
 Seen from the side it has five faces:
 
 - **Back**, flat on the wall.
-- **Top**: a 45° bevel.
+- **Top**: sloping down toward you at 30°.
 - **Screen face**, tilted 15° up toward you. Below the screen it continues as a chin with
   an engraved arrow pointing down at the scanner.
 - **Mouth**: a 45° bevel under the chin with the scanner window. The scanner looks 45°
@@ -35,11 +35,22 @@ Seen from the front the top corners are rounded (30 mm), the bottom ones slightl
 
 | File | Print |
 |---|---|
-| [stl/pantry-scanner-shell.stl](stl/pantry-scanner-shell.stl) | Everything but the back. **Stands on its flat bottom, no supports**: every face is within 45° of vertical, and the windows' edges are chamfered so the screen window's top edge isn't a 100 mm bridge. PETG or PLA, 0.2 mm layers, 3 walls. |
-| [stl/pantry-scanner-back.stl](stl/pantry-scanner-back.stl) | Back plate. Outside face down, posts up, no supports. |
+| [stl/pantry-scanner-shell.stl](stl/pantry-scanner-shell.stl) | Everything but the back. **Lies on its screen face, no supports** (the STL comes that way round): nothing overhangs more than 45° except the rounded edges of the face in the first 0.7 mm and the 1.6 mm ends of the speaker grille's slots. That's why the top slopes at 30° (the face leans 15°), the screw bosses' ends, the scanner fins' lips and the speaker ring are pointed, and the scanner window and LED slit widen inward on their floor side. PETG or PLA, 0.2 mm layers, 3 walls. |
+| [stl/pantry-scanner-back.stl](stl/pantry-scanner-back.stl) | Back plate. Outside face down, posts up, no supports. The posts are 7.5 mm thick behind the board, flared into the plate, and each side's pair is joined by a web; they're thin (4.6 mm) only for the last 4.5 mm, beside the board. |
+| [stl/pantry-scanner-arrow.stl](stl/pantry-scanner-arrow.stl) | Optional: the arrow on the chin, for a second colour. Without it the shell has the arrow engraved 1 mm deep. |
+
+**Arrow in another colour** (Bambu H2S with an AMS, or any multi-material printer): the
+arrow STL is exported exactly where it sits in the shell as printed, filling the engraved
+pocket flush with the face, so it's on the bed: the first 1 mm, five layers at 0.2 mm,
+one filament change each. In Bambu Studio drag the shell and arrow STLs in **together**
+and answer **Yes** to loading them as a single object with multiple parts (that keeps them
+lined up), then pick the arrow part in the object list and give it the other filament.
+For the Sunton and mainboard cases use [stl/sunton-arrow.stl](stl/sunton-arrow.stl) and
+[stl/mainboard-arrow.stl](stl/mainboard-arrow.stl).
 
 Also: 4 × **M3 × 8** self-tapping screws (or machine screws into heat-set inserts), 2 wall
-screws with heads up to 8 mm, thin double-sided foam tape, a little hot glue, a
+screws with heads up to 8 mm, about 5 cm of **1.75 mm filament** (the pins that locate the
+display), thin double-sided foam tape, a little hot glue, a
 **right-angle USB-C cable**, and Dupont wires for the modules (wiring:
 [main README](../../README.md#wiring)).
 
@@ -48,10 +59,12 @@ screws with heads up to 8 mm, thin double-sided foam tape, a little hot glue, a
 1. **Display**: stick it into the shell, glass against the bezel, with a few strips of foam
    tape. Its two USB-C ports and the 2×13 header go to the left (as you look at the
    screen).
-2. **Scanner**: two rails stand in the mouth along the scanner's line of sight. Slide the
-   GM67 into their grooves from behind, scan engine first and its parts facing the floor,
-   until the engine sits against the window. A dab of hot glue on each rail keeps it there.
-   Plug its UART cable in first: there's room for the plug at the far end, not for fingers.
+2. **Scanner**: two fins stand in the mouth along the scanner's line of sight, down to the
+   floor, with a groove along the top of each. Slide the GM67 in from behind, scan engine
+   first and its parts facing the floor, board edges in the grooves, until the engine sits
+   against the window on the seat at the bottom of the fins. A dab of hot glue on each fin
+   keeps it there. Plug its UART cable in first: there's room for the plug at the far end,
+   not for fingers.
 3. **LED module**: hot-glue it inside the mouth over the slit left of the scanner window,
    LED facing the slit.
 4. **Speaker**: drop it into the ring on the floor, cone down over the round grille (right
@@ -61,8 +74,10 @@ screws with heads up to 8 mm, thin double-sided foam tape, a little hot glue, a
 6. **USB**: the board's USB-C ports face backwards, so plug a right-angle USB-C cable into
    the one marked full speed and lay its cable down to the notch at the back of the floor
    (left of centre). It leaves the case there and hangs down the wall.
-7. **Close**: back plate on (its posts land on the display's four mounting ears, pins in
-   their 2 mm holes), four screws, hang it on the two wall screws.
+7. **Close**: push a 6 mm piece of 1.75 mm filament all the way into the 4 mm hole at the
+   end of each post (a drop of superglue if it's loose), so 2 mm sticks out. Back plate on (the posts
+   land on the display's four mounting ears, the filament pins in their 2 mm holes), four
+   screws, hang it on the two wall screws.
 
 ## Other boards and scanners
 
