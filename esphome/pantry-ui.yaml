@@ -3,7 +3,9 @@
 # pantry-sunton.yaml and pantry-mainboard.yaml for the other boards) and
 # pantry-sim.yaml (a desktop window). Those provide the hardware ids used
 # here: main_display, touch, backlight, ha_time, and the substitutions
-# `server` and `location`. Scans come in through script `handle_scan`.
+# `server`, `token` and `location`. Scans come in through script `handle_scan`.
+# `token` is a device token from the app (More → Users & devices); every
+# request to the app sends it as `Authorization: Bearer …`.
 #
 # Screen layout (v2 design): a status bar on top, a stage in the middle that
 # swaps cards per state, and a fixed bottom bar with TAKE OUT | PUT AWAY and
@@ -84,6 +86,8 @@ image:
   - platform: online_image
     id: product_img
     url: ${server}/img/0.jpg   # replaced at runtime per scan
+    request_headers:
+      Authorization: Bearer ${token}
     format: JPEG                # the app stores every product photo as JPEG
     type: RGB565
     resize: 168x168
@@ -1114,6 +1118,7 @@ script:
             - http_request.post:
                 url: ${server}/api/scan
                 request_headers:
+                  Authorization: Bearer ${token}
                   Content-Type: application/json
                 json: !lambda |-
                   root["code"] = code;
@@ -1152,6 +1157,8 @@ script:
                 then:
                   - http_request.get:
                       url: !lambda 'return "${server}/api/scan/" + to_string(pantry::last.event_id);'
+                      request_headers:
+                        Authorization: Bearer ${token}
                       capture_response: true
                       max_response_buffer_size: 2048
                       on_response:
@@ -1179,6 +1186,7 @@ script:
             - http_request.post:
                 url: !lambda 'return "${server}/api/scan/" + to_string(id(undo_event)) + "/adjust";'
                 request_headers:
+                  Authorization: Bearer ${token}
                   Content-Type: application/json
                 json: !lambda 'root["by"] = by;'
                 capture_response: true
@@ -1199,6 +1207,8 @@ script:
           then:
             - http_request.post:
                 url: !lambda 'return "${server}/api/scan/" + to_string(id(fix_event)) + "/fix";'
+                request_headers:
+                  Authorization: Bearer ${token}
                 capture_response: true
                 max_response_buffer_size: 2048
                 on_response:
@@ -1214,6 +1224,8 @@ script:
     then:
       - http_request.get:
           url: ${server}/api/scan/recent?device=wall
+          request_headers:
+            Authorization: Bearer ${token}
           capture_response: true
           max_response_buffer_size: 2048
           on_response:
@@ -1276,6 +1288,7 @@ script:
             - http_request.post:
                 url: ${server}/api/undo
                 request_headers:
+                  Authorization: Bearer ${token}
                   Content-Type: application/json
                 json: !lambda 'root["event_id"] = pantry::recent[i].event_id;'
                 capture_response: true
@@ -1324,6 +1337,8 @@ script:
     then:
       - http_request.get:
           url: ${server}/api/summary
+          request_headers:
+            Authorization: Bearer ${token}
           capture_response: true
           max_response_buffer_size: 2048
           on_response:
@@ -1367,6 +1382,7 @@ script:
             - http_request.post:
                 url: ${server}/api/scan
                 request_headers:
+                  Authorization: Bearer ${token}
                   Content-Type: application/json
                 json: !lambda |-
                   root["code"] = pantry::queue.front().code;

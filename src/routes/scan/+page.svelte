@@ -45,6 +45,9 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body ?? {})
 		});
+		// Signed out (session ended elsewhere): the scan is kept in the queue
+		// and sent once you're back in.
+		if (res.status === 401) window.location.href = '/login?next=/scan';
 		if (!res.ok) throw new Error(`HTTP ${res.status}`);
 		return res.json();
 	}

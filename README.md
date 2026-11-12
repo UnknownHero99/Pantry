@@ -47,7 +47,12 @@ The phone app: Pantry stock, the Garage, one box, the shopping list, packing and
 ```bash
 cp .env.example .env     # set ORIGIN, optionally HA_*
 docker compose pull && docker compose up -d
+docker logs pantry       # the one-time setup code
 ```
+
+Open the app, enter the setup code from the log and create the admin account. Then, in
+**More → Users & devices**, add the rest of the household and make a device token for the
+wall scanner (and one for Home Assistant).
 
 Every push to `master` builds `ghcr.io/unknownhero99/pantry:latest` (amd64 + arm64) in GitHub Actions. To run your own checkout instead, use `docker compose up -d --build`.
 
@@ -65,6 +70,7 @@ Dev: `npm install && npm run dev` (port 5190, data in `./data`).
 | `HA_URL`, `HA_TOKEN`, `HA_TODO_ENTITY` | Optional grocery-list sync, e.g. `http://192.168.10.10:20810`, a long-lived token, `todo.shopping_list`. |
 | `HA_TODO_ENTITY_GARAGE` | Optional: the garage shopping list into its own HA to-do list, e.g. `todo.hardware_store`. |
 | `HA_NOTIFY` | Optional: "Lent to…" reminders as phone notifications, e.g. `notify.mobile_app_pixel_8`. |
+| `TRUSTED_PROXIES` | Optional: comma-separated addresses of your reverse proxy. Only they may set `X-Forwarded-For` / `-Proto` / `-Host`. Unset, any private or loopback address is trusted (a proxy on the LAN or in Docker). |
 
 ### Reverse proxy
 
@@ -74,8 +80,41 @@ it (nginx: `proxy_buffering off;`; the app also sends `X-Accel-Buffering: no`).
 
 The wall scanner talks plain HTTP straight to `http://<nas>:5190`, not through the proxy.
 
-**There is no login.** Keep the app LAN-only or put proxy auth in front of the HTTPS
-side. The wall scanner bypasses the proxy, so proxy auth doesn't affect it.
+The proxy must pass `X-Forwarded-For` and `X-Forwarded-Proto` (Caddy, Traefik and Nginx Proxy
+Manager do by default; plain nginx needs `proxy_set_header X-Forwarded-For
+$proxy_add_x_forwarded_for;` and `proxy_set_header X-Forwarded-Proto $scheme;`). Pantry uses them
+to rate-limit sign-in per client and to mark the session cookie `Secure`. HSTS belongs on the proxy.
+
+## Sign-in and security
+
+Everything except the sign-in page needs an account; nothing is readable without one.
+
+- **People** sign in with a username and password (10+ characters, scrypt-hashed). The browser
+  gets a random session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` over HTTPS) that lasts 30
+  days from the last visit, so phones stay signed in. The database stores only a hash of it.
+  **More → Account** changes your password (which signs out your other devices), lists where
+  you're signed in and signs any of them out.
+- **Admins** also get **More → Users & devices**: add people, set a new password for someone,
+  make them admin, remove them. There's always at least one admin.
+- **Devices** (the wall scanner, Home Assistant) use a token from Users & devices, sent as
+  `Authorization: Bearer pnt_…`. A token opens `/api/*` and `/img/*`, never the pages, is shown
+  once, stored hashed, and can be revoked there at any time.
+- **First run:** with no accounts, every page goes to `/setup`, which asks for a one-time code
+  printed in the server log, so whoever reaches a fresh install first can't claim it.
+- **Brute force:** after 10 failed sign-ins from one address, or 20 for one username, in 15
+  minutes, sign-in is refused for the rest of that window. Failures are logged with the
+  client's address.
+- **Cross-site requests:** every POST from a browser must come from this site (its `Origin`
+  is checked against the request's host, `ORIGIN`, or the proxy's `X-Forwarded-Host`). Pages
+  send a Content-Security-Policy (scripts only from the app), `X-Frame-Options: DENY`,
+  `nosniff` and `Referrer-Policy: same-origin`.
+
+Locked out? Remove the users and Pantry asks for setup again (stock is untouched):
+
+```bash
+docker exec pantry node -e "new (require('node:sqlite').DatabaseSync)('/data/pantry.db').exec('DELETE FROM users')"
+docker restart pantry && docker logs pantry
+```
 
 ## Spaces: Pantry, Kitchen, Garage
 
@@ -234,6 +273,11 @@ ship with an older C6 firmware than ESPHome expects, which can drop Wi-Fi now an
 Once the scanner is in HA, install the **Wi-Fi co-processor** update it offers (ESPHome's
 build, downloaded by the scanner itself).
 
+Make a device token in the app (**More → Users & devices → New token**, e.g. "Wall
+scanner") and put it in `secrets.yaml` as `pantry_token`; the scanner sends it with every
+request. Without it, or after it's revoked, the server answers 401 and the scanner can't
+scan, so make the token before flashing.
+
 Set `ORIGIN` on the server: the unknown-barcode screen shows a QR code of
 `<ORIGIN>/product/<id>`, which opens the product on your phone to name it.
 
@@ -248,6 +292,8 @@ sources disagree on its reset and interrupt pins.
 `pantry-sim.yaml` runs the same screens in an 800×480 window on a Linux desktop (X11).
 The mouse is the touchscreen, and a small script stands in for the barcode module.
 It talks to the app on `http://127.0.0.1:5190`, so start that first (`npm run dev`).
+
+Put a device token from the app in `token:` at the top of `pantry-sim.yaml` first.
 
 ```bash
 esphome/sim/run.sh                   # builds a Docker image with SDL, compiles, opens the window
@@ -294,11 +340,14 @@ middle, and a fixed bottom bar: **TAKE OUT | PUT AWAY** and **UNDO**.
 Shopping list: set the `HA_*` variables. The app adds and removes only the items it put
 there, so items you add by hand are left alone.
 
-Sensors from `/api/summary`:
+Sensors from `/api/summary`, with a device token (Users & devices → New token, e.g. "Home
+Assistant") in HA's `secrets.yaml` as `pantry_auth: "Bearer pnt_…"`:
 
 ```yaml
 rest:
   - resource: http://192.168.10.10:5190/api/summary
+    headers:
+      Authorization: !secret pantry_auth
     scan_interval: 300
     sensor:
       - name: Pantry low stock
@@ -312,6 +361,9 @@ rest:
 ```
 
 ## API
+
+Every call needs either a signed-in browser session or `Authorization: Bearer <device token>`;
+without one the answer is `401`.
 
 | | |
 |---|---|

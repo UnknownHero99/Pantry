@@ -9,7 +9,12 @@
 	onMount(() => {
 		if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
-		// A scan at the wall shows up on every open phone without a refresh.
+	});
+
+	// A scan at the wall shows up on every open phone without a refresh.
+	// Only while signed in: signed out, the stream is a 401 it would retry forever.
+	$effect(() => {
+		if (!data.user) return;
 		const es = new EventSource('/api/events');
 		let t;
 		es.onmessage = () => {
@@ -29,10 +34,11 @@
 		// On a PC the nav is a sidebar with room for these, so More isn't needed there.
 		{ href: '/inbox', label: 'Inbox', icon: 'M4 13h4l2 3h4l2-3h4M4 13l2-8h12l2 8v6H4z', badge: 'inboxCount', desk: true },
 		{ href: '/history', label: 'History', icon: 'M12 7v5l3 2M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5', desk: true },
+		{ href: '/account', label: 'Account', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', desk: true },
 		{ href: '/settings', label: 'Settings', icon: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z', desk: true }
 	];
 	// Inbox, history and settings live under More; a product page under Stock.
-	const under = { '/more': ['/inbox', '/history', '/settings'], '/': ['/product'] };
+	const under = { '/more': ['/inbox', '/history', '/settings', '/account', '/users'], '/account': ['/users'], '/': ['/product'] };
 	const on = (href) =>
 		href === '/'
 			? page.url.pathname === '/' || under['/'].some((p) => page.url.pathname.startsWith(p))
@@ -43,6 +49,7 @@
 	{@render children()}
 </div>
 
+{#if data.user}
 <nav class="nav" aria-label="Main">
 	<div class="nav-in">
 		<a class="brand" href="/" aria-label="Pantry"><img src="/logo.svg" alt="" /><span class="wordmark">pantry</span></a>
@@ -61,3 +68,4 @@
 		{/each}
 	</div>
 </nav>
+{/if}

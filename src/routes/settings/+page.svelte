@@ -105,7 +105,7 @@
 	<div class="sub">
 		Groceries list: {data.ha ? 'synced' : 'off (HA_TODO_ENTITY)'} · Garage list: {data.haGarage ? 'synced' : 'off (HA_TODO_ENTITY_GARAGE)'} ·
 		Lending reminders: {data.haNotify ? 'on' : 'off (HA_NOTIFY, e.g. notify.mobile_app_phone)'}.
-		REST sensor endpoint: <code>/api/summary</code>
+		REST sensor endpoint: <code>/api/summary</code>, with a token from <a href="/users">Users &amp; devices</a>
 	</div>
 </section>
 

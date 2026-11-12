@@ -21,3 +21,6 @@ services:
       # Optional: the garage list into its own to-do list, and lending reminders.
       HA_TODO_ENTITY_GARAGE: ${HA_TODO_ENTITY_GARAGE:-}
       HA_NOTIFY: ${HA_NOTIFY:-}
+      # Optional: your reverse proxy's address(es). Only these may set X-Forwarded-*;
+      # unset, any private/loopback address is trusted.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}

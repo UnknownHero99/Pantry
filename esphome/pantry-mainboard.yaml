@@ -17,6 +17,7 @@
 substitutions:
   name: pantry-scanner
   server: http://192.168.10.10:5190   # pantry app, reachable from this VLAN
+  token: !secret pantry_token         # device token: app → More → Users & devices
   location: Pantry                     # where this unit hangs; used for products with no usual place yet
   scanner_baud: "9600"                 # GM65 default; set the SparkFun DE2120 to 9600 too, or change this
 

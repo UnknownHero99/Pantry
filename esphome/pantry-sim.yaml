@@ -8,6 +8,7 @@
 substitutions:
   name: pantry-sim
   server: http://127.0.0.1:5190
+  token: change-me   # a device token from the app's Users & devices page
   location: Pantry
 
 esphome:
