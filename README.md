@@ -201,7 +201,7 @@ which parts to buy locally instead, because the charge is several times their pr
 | **GROW GM67** barcode module (1D + 2D, red aiming light, 5 V, TTL UART; comes with its cables). The [enclosure](hardware/enclosure) is made for it; a GM65 or the SparkFun breakout works with the same firmware. | ~€25 |
 | **Speaker**, 8 Ω 1–2 W, round 28 mm × 5 mm, with a 1.25 mm 2-pin plug on a lead of 15 cm or more: it plugs into the board's own amplifier | ~€10 |
 | **WS2812B LED module**, a single LED (DIN, VCC, GND) | ~€1 |
-| A 1.25 mm 4-pin pigtail for CN2 (~€9), three female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | ~€15 |
+| Three female Dupont wires, a **right-angle** USB-C cable and a 5 V 2 A supply | ~€15 |
 | [3D-printed case](hardware/enclosure) (or any wall box) | |
 
 The speaker and LED are optional. Without the speaker, the GM67's own beep confirms each
@@ -213,17 +213,16 @@ to nothing. Without both, drop the `feedback` package and the speaker section fr
 
 | Guition | Goes to |
 |---|---|
-| **CN2 "UART0"** (1.25 mm 4-pin) pin 1 `VIN` (5 V) | GM67 UART pin 1 `5V` |
-| **CN2** pin 2 `TX` (GPIO37) | GM67 pin 3 `RX` |
-| **CN2** pin 3 `RX` (GPIO38) | GM67 pin 2 `TX` |
-| **CN2** pin 4 `GND` | GM67 pin 4 `GND` |
+| The 1.25 mm 4-pin socket marked **5V, IO26, IO27, GND**: `5V` | GM67 UART pin 1 `5V` |
+| `IO26` (the board's RX) | GM67 pin 2 `TX` |
+| `IO27` (the board's TX) | GM67 pin 3 `RX` |
+| `GND` | GM67 pin 4 `GND` |
 | **Speaker socket** (1.25 mm 2-pin, on the board's top edge) | speaker |
 | **JP1** (2×13 header) pins **2, 4, 6**: 3.3 V, GND, GPIO33 | LED VCC, GND, DIN |
 
-Both 4-pin connectors have the same pin order, so **TX and RX must cross**: a straight
-cable between them won't work. Join a 1.25 mm pigtail from CN2 to the GM67's own UART cable
-with pins 2 and 3 swapped (solder and heat-shrink). The GM67's UART socket is the one
-marked UART, next to the USB one.
+Pin for pin, so the GM67's own 4-pin UART cable plugs straight in. The GM67's UART socket
+is the one marked UART, next to the USB one. Not **CN2 "UART0"**: on this board it's
+GPIO21/GPIO38, and a GM67 on it never got through.
 
 The LED takes three neighbouring header pins, so it's one 3-pin Dupont plug and no
 splicing. It runs on 3.3 V so its data input sees a full-level signal; WS2812B LEDs are
@@ -231,7 +230,7 @@ rated from 3.5 V but work at 3.3 V. The speaker is driven by the board's ES8311 
 and amplifier (enabled on GPIO11); the scan sounds are the same tunes a buzzer would play.
 
 Flashing and logs go over the USB-C marked **full speed** (the ESP32-P4's USB
-Serial/JTAG), so the scanner keeps UART0 and can stay plugged in.
+Serial/JTAG), so the scanner can stay plugged in.
 
 **Other boards.** [esphome/pantry-sunton.yaml](esphome/pantry-sunton.yaml) is the same
 thing on the Sunton **ESP32-8048S043C** (ESP32-S3, ~€52 delivered), with its wiring in the

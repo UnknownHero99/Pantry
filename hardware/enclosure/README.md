@@ -70,7 +70,7 @@ display), thin double-sided foam tape, a little hot glue, a
 4. **Speaker**: drop it into the ring on the floor, cone down over the round grille (right
    of centre, seen from the front), and fix it with a dab of hot glue. Its lead goes up to
    the speaker socket on the board's top edge.
-5. **Wires**: the scanner's to CN2 "UART0", the LED's to the header.
+5. **Wires**: the scanner's to the socket marked 5V, IO26, IO27, GND, the LED's to the header.
 6. **USB**: the board's USB-C ports face backwards, so plug a right-angle USB-C cable into
    the one marked full speed and lay its cable down to the notch at the back of the floor
    (left of centre). It leaves the case there and hangs down the wall.

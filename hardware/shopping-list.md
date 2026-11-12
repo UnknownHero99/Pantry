@@ -55,8 +55,7 @@ a look too: €22.78 before the sale (Shop1102210483), €23.19 (WAVGAT authoriz
 
 - **5 V 2 A USB charger** with a USB-A port. A phone charger you trust beats a €3 no-name
   one for something plugged in all day.
-- A soldering iron, solder and heat-shrink: for the crossed TX/RX wires between the CN2
-  pigtail and the GM67's cable, and for the LED board, which has solder pads, not pins.
+- A soldering iron and solder, for the LED board, which has solder pads, not pins.
 - Thin double-sided foam tape and hot glue.
 - 2 wall screws with heads up to 8 mm, and plugs for your wall.
 - About 150 g of PETG or PLA for the [case](enclosure). Its two parts are about 116 cm³
@@ -64,9 +63,8 @@ a look too: €22.78 before the sale (Shop1102210483), €23.19 (WAVGAT authoriz
 
 ## Notes
 
-- The **GM67** and the display board's CN2 have the same pin order (5V, TX, RX, GND), so a
-  straight cable won't work: cross TX and RX between the pigtail and the GM67's UART cable.
-  See [Wiring](../README.md#wiring).
+- The **GM67**'s own UART cable plugs straight into the board's socket marked 5V, IO26,
+  IO27, GND: no pigtail or crossed wires. See [Wiring](../README.md#wiring).
 - The **speaker's 15 cm lead** reaches from the floor to the board's speaker socket on its
   top edge (about 12 cm). Speakers sold with 10 cm leads are too short; a spare 2-pin
   pigtail soldered on would lengthen one.

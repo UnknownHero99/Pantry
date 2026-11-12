@@ -5,16 +5,16 @@
 #     board's own connectors. No custom board needed.
 #
 # Wiring (board connector → module):
-#   CN2 "UART0", 1.25 mm 4-pin (VIN, TX GPIO37, RX GPIO38, GND)
-#                         → GM67 UART (5V, TX, RX, GND): same pin order, so cross
-#                           TX and RX (CN2 pin 2 → GM67 pin 3, pin 3 → pin 2)
+#   The 1.25 mm 4-pin socket marked 5V, IO26, IO27, GND
+#                         → GM67 UART (5V, TX, RX, GND), pin for pin: a straight
+#                           cable (GM67 TX → IO26, GM67 RX → IO27)
 #   Speaker socket, 1.25 mm 2-pin  → an 8 ohm 1-2 W speaker (the board's ES8311 audio
 #                                    chip and amplifier drive it)
 #   JP1, the 2x13 2.54 mm header:
 #     pins 2, 4, 6:  3.3V, GND, GPIO33 → LED: VCC, GND, DIN
 #     pins 16, 14:   3.3V, GND         → a SparkFun scanner's 3V3 instead (it runs on 3.3 V)
-# Flash and logs go over the USB-C marked full speed (USB Serial/JTAG), so UART0
-# is the scanner's and the scanner can stay plugged in.
+# Flash and logs go over the USB-C marked full speed (USB Serial/JTAG), so the
+# scanner can stay plugged in.
 #
 # Scanner setup (scan the config barcodes in its manual once):
 #   UART output, 9600 baud, continuous/induction mode, add CR suffix; silent mode,
@@ -29,6 +29,7 @@ substitutions:
   server: http://192.168.10.10:5190   # pantry app, reachable from this VLAN
   token: !secret pantry_token         # device token: app → More → Users & devices
   location: Pantry                     # where this unit hangs; used for products with no usual place yet
+  timezone: Europe/Ljubljana           # for the clock
   scanner_baud: "9600"                 # GM67 / GM65 default; set a SparkFun DE2120 to 9600 too, or change this
   # Early ESP32-P4 chips (revision v1.x) need a build for them. The first USB flash
   # prints "Chip is ESP32-P4 (revision v1.3)" or similar: below v3.0, set this to "true".
@@ -64,7 +65,7 @@ psram:
   mode: hex
   speed: 200MHz
 
-# UART0 belongs to the scanner; logs go to the USB-C (and over Wi-Fi).
+# Logs go to the USB-C (and over Wi-Fi).
 logger:
   hardware_uart: USB_SERIAL_JTAG
 
@@ -101,18 +102,25 @@ update:
     type: http
     source: https://esphome.github.io/esp-hosted-firmware/manifest/esp32c6.json
 
-# The clock comes from Home Assistant, so the IoT VLAN needs no internet.
+# The clock comes from Home Assistant, or from the internet (NTP) when the scanner isn't
+# in Home Assistant or it's down: both set the same system clock, which the screens read
+# through ha_time. Without a timezone here it would be the build machine's (UTC in Docker).
 time:
   - platform: homeassistant
     id: ha_time
+    timezone: ${timezone}
+  - platform: sntp
+    id: ntp_time
+    timezone: ${timezone}
 
 # ── hardware ────────────────────────────────────────────────────────────
 
-# GPIO37/38 are strapping pins, but they are the board's own UART0 connector.
+# The scanner is on the socket with IO26/IO27. (CN2 "UART0" turned out to be GPIO21 and
+# GPIO38, measured on a board, and a GM67 on it never got through.)
 uart:
   - id: scanner_uart
-    tx_pin: { number: GPIO37, ignore_strapping_warning: true }
-    rx_pin: { number: GPIO38, ignore_strapping_warning: true }
+    tx_pin: GPIO27
+    rx_pin: GPIO26
     baud_rate: ${scanner_baud}
     debug:
       direction: RX
@@ -122,8 +130,10 @@ uart:
         timeout: 100ms   # also works if the CR suffix isn't enabled
       sequence:
         - lambda: |-
+            UARTDebug::log_hex(direction, bytes, ':');   // every read, in the log
             std::string code;
             for (auto b : bytes) if (b > 32 && b < 127) code += (char) b;
+            // Held in front of the window, a code is read and counted about twice a second.
             if (!code.empty()) id(handle_scan)->execute(code);
 
 # The DSI PHY's 2.5 V supply.

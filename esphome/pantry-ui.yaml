@@ -21,6 +21,9 @@ esphome:
   on_boot:
     priority: -100
     then:
+      - lambda: |-
+          pantry::no_scroll(id(main_page)->obj);
+          pantry::no_scroll(id(night_page)->obj);
       - script.execute: paint_mode
       - script.execute: show_idle
       - script.execute: fetch_summary
@@ -48,6 +51,9 @@ globals:
   # Set by render_reply. Kept here because ESPHome emits some actions above the
   # pantry_ui.h include, where pantry:: isn't visible yet.
   - { id: photo_url, type: std::string, initial_value: '""' }
+  # The photo now in img_product: a result for the same product keeps it, with no new
+  # download (one still running refuses another, and the photo never showed).
+  - { id: photo_shown, type: std::string, initial_value: '""' }
 
 # ── look ────────────────────────────────────────────────────────────────
 
@@ -93,10 +99,12 @@ image:
     resize: 168x168
     update_interval: never
     on_download_finished:
+      - lambda: id(photo_shown) = id(photo_url);
       - lvgl.image.update: { id: img_product, src: product_img }
       - lvgl.widget.show: img_product
       - lvgl.widget.hide: media_icon
     on_error:
+      - lambda: id(photo_shown) = "";
       - lvgl.widget.hide: img_product
       - lvgl.widget.show: media_icon
 
@@ -317,28 +325,6 @@ lvgl:
                                       - label: { id: lbl_count, text: "", text_font: f72b }
                                       - label: { id: lbl_count_s, text: "", text_font: f44b, hidden: true }
                                       - label: { id: lbl_left, text: "left", text_color: 0xB0B0B0 }
-                                      - obj: { flex_grow: 1, height: 1 }
-                                      - label: { id: lbl_more, text: "Took\nmore?", text_font: f18, text_color: 0xB0B0B0, text_align: RIGHT }
-                                      - button:
-                                          id: btn_minus
-                                          width: 60
-                                          height: 60
-                                          radius: 14
-                                          bg_color: 0x404040
-                                          widgets:
-                                            - label: { text: "−", align: CENTER, text_font: f30b }
-                                          on_click:
-                                            - script.execute: { id: adjust_last, by: -1 }
-                                      - button:
-                                          id: btn_plus
-                                          width: 60
-                                          height: 60
-                                          radius: 14
-                                          bg_color: 0x484848
-                                          widgets:
-                                            - label: { text: "+", align: CENTER, text_font: f30b }
-                                          on_click:
-                                            - script.execute: { id: adjust_last, by: 1 }
                                 - obj:
                                     id: empty_row
                                     width: 100%
@@ -367,6 +353,37 @@ lvgl:
                                             - label: { text: "Ignore", align: CENTER, text_font: f22b, text_color: 0xF5BFD0 }
                                           on_click:
                                             - script.execute: show_idle
+                          # "Bought more?" + / −: a column of its own at the card's edge. In the
+                          # count row it didn't fit beside the put-away trip list (276 px for 380+).
+                          - obj:
+                              id: stepper_col
+                              width: 64
+                              height: SIZE_CONTENT
+                              hidden: true
+                              scrollable: false
+                              layout: { type: flex, flex_flow: column, flex_align_cross: center, pad_row: 8 }
+                              widgets:
+                                - label: { id: lbl_more, text: "Took\nmore?", text_font: f15, text_color: 0xB0B0B0, text_align: CENTER }
+                                - button:
+                                    id: btn_plus
+                                    width: 64
+                                    height: 60
+                                    radius: 14
+                                    bg_color: 0x484848
+                                    widgets:
+                                      - label: { text: "+", align: CENTER, text_font: f30b }
+                                    on_click:
+                                      - script.execute: { id: adjust_last, by: 1 }
+                                - button:
+                                    id: btn_minus
+                                    width: 64
+                                    height: 60
+                                    radius: 14
+                                    bg_color: 0x404040
+                                    widgets:
+                                      - label: { text: "−", align: CENTER, text_font: f30b }
+                                    on_click:
+                                      - script.execute: { id: adjust_last, by: -1 }
                           # Drains while the result is up, then the screen goes home.
                           - bar:
                               id: bar_return
@@ -997,8 +1014,9 @@ script:
 
           // Photo, or a tag for home-made packages; the photo shows once downloaded.
           id(photo_url) = pkg || r.image.empty() ? std::string() : "${server}" + r.image;
-          show(id(img_product), false);
-          show(id(media_icon), true);
+          bool have_photo = !id(photo_url).empty() && id(photo_url) == id(photo_shown);
+          show(id(img_product), have_photo);
+          show(id(media_icon), !have_photo);
           text(id(media_icon), pkg ? "\U000F04FC" : "\U000F0072");
           text(id(lbl_pkg_code), r.pkg);
           show(id(lbl_pkg_code), pkg);
@@ -1026,9 +1044,7 @@ script:
           text(id(lbl_left), pkg ? r.left_text : "left");
           show(id(lbl_left), pkg || r.mode == "out");
           bool stepper = ok && !undo && !pkg && r.event_id > 0;
-          show(id(lbl_more), stepper);
-          show(id(btn_minus), stepper);
-          show(id(btn_plus), stepper);
+          show(id(stepper_col), stepper);
           text(id(lbl_more), r.mode == "in" ? "Bought\nmore?" : "Took\nmore?");
           bg(id(btn_minus), 0x404040);
           bg(id(btn_plus), 0x484848);
@@ -1068,7 +1084,7 @@ script:
             return r.status;   // lookup, unknown, empty, box, error
       - if:
           condition:
-            lambda: "return !id(photo_url).empty();"
+            lambda: "return !id(photo_url).empty() && id(photo_url) != id(photo_shown);"
           then:
             - online_image.set_url:
                 id: product_img
