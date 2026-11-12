@@ -29,10 +29,10 @@
 		<input type="text" name="username" value={data.me.username} autocomplete="username" hidden />
 		<label class="lbl" for="current">Current password</label>
 		<input id="current" name="current" type="password" autocomplete="current-password" required />
-		<label class="lbl" for="password">New password <span class="hint">10+ characters</span></label>
-		<input id="password" name="password" type="password" autocomplete="new-password" minlength="10" required />
+		<label class="lbl" for="password">New password <span class="hint">6+ characters</span></label>
+		<input id="password" name="password" type="password" autocomplete="new-password" minlength="6" required />
 		<label class="lbl" for="password2">New password again</label>
-		<input id="password2" name="password2" type="password" autocomplete="new-password" minlength="10" required />
+		<input id="password2" name="password2" type="password" autocomplete="new-password" minlength="6" required />
 		{#if form?.pwError}<p class="note bad" role="alert">{form.pwError}</p>{/if}
 		{#if form?.pwDone}<p class="note good">Password changed.</p>{/if}
 		<button style="margin-top: 14px">Change password</button>

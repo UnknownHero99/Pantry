@@ -1,12 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { checkSetupCode, checkUsername, checkPassword, createUser, createSession, userCount, throttled, recordFailure } from '$lib/server/auth.js';
+import { checkSetupCode, checkUsername, cleanUsername, checkPassword, createUser, createSession, userCount, throttled, recordFailure } from '$lib/server/auth.js';
 import { clientIp, setSessionCookie } from '$lib/server/request.js';
 
 /** First run: the first admin, with the one-time code from the server log. */
 export const actions = {
 	default: async (event) => {
 		const f = await event.request.formData();
-		const username = String(f.get('username') ?? '').trim();
+		const username = cleanUsername(f.get('username'));
 		const password = String(f.get('password') ?? '');
 		const ip = clientIp(event);
 

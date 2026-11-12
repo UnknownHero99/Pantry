@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { authenticate, createSession, throttled, recordFailure, clearFailures } from '$lib/server/auth.js';
+import { authenticate, cleanUsername, createSession, throttled, recordFailure, clearFailures } from '$lib/server/auth.js';
 import { clientIp, safeNext, setSessionCookie } from '$lib/server/request.js';
 
 export function load({ url }) {
@@ -9,7 +9,7 @@ export function load({ url }) {
 export const actions = {
 	default: async (event) => {
 		const f = await event.request.formData();
-		const username = String(f.get('username') ?? '').trim().slice(0, 64);
+		const username = cleanUsername(f.get('username'));
 		const password = String(f.get('password') ?? '').slice(0, 256);
 		const ip = clientIp(event);
 

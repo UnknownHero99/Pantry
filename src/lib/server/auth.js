@@ -46,7 +46,7 @@ CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
 export const COOKIE = 'pantry_session';
 /** Sessions last 30 days from the last visit, so a phone stays signed in. */
 export const SESSION_DAYS = 30;
-export const MIN_PASSWORD = 10;
+export const MIN_PASSWORD = 6;
 
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 const sqlTime = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
@@ -84,8 +84,22 @@ export function checkPassword(pw) {
 	if (pw.length > 256) return 'That password is too long';
 	return null;
 }
+/**
+ * A username as typed, tidied: phone keyboards and autofill can add invisible
+ * characters (zero-width spaces, a trailing non-breaking space) that look like
+ * nothing but would fail the check, or fail to match at sign-in.
+ */
+export function cleanUsername(u) {
+	return String(u ?? '').normalize('NFKC').replace(/\p{Cf}/gu, '').replace(/\s+/gu, ' ').trim().slice(0, 64);
+}
 export function checkUsername(u) {
-	if (!/^[\p{L}\p{N}._-]{2,32}$/u.test(u)) return 'Usernames are 2–32 letters, digits, dots, dashes or underscores';
+	if (u.length < 2) return 'Usernames need at least 2 characters';
+	if (u.length > 32) return 'Usernames can be at most 32 characters';
+	const bad = [...new Set(u.match(/[^\p{L}\p{N}._-]/gu) ?? [])];
+	if (bad.length) {
+		const name = (c) => (c === ' ' ? 'spaces' : `"${c}"`);
+		return `Usernames can't contain ${bad.map(name).join(' or ')}: use letters, digits, dots, dashes or underscores`;
+	}
 	return null;
 }
 
@@ -106,7 +120,7 @@ export async function createUser(username, password, isAdmin = false) {
 
 /** The user for a username and password, or null. Always does one scrypt. */
 export async function authenticate(username, password) {
-	const u = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username));
+	const u = db.prepare('SELECT * FROM users WHERE username = ?').get(cleanUsername(username));
 	const ok = await verifyPassword(String(password), u?.password ?? (await DUMMY()));
 	return ok && u ? u : null;
 }

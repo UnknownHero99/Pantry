@@ -1,6 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import {
-	listUsers, createUser, setPassword, setAdmin, deleteUser, checkUsername, checkPassword,
+	listUsers, createUser, setPassword, setAdmin, deleteUser, checkUsername, cleanUsername, checkPassword,
 	listDeviceTokens, createDeviceToken, deleteDeviceToken
 } from '$lib/server/auth.js';
 
@@ -18,7 +18,7 @@ export const actions = {
 	add: async ({ locals, request }) => {
 		admin(locals);
 		const f = await request.formData();
-		const username = String(f.get('username') ?? '').trim();
+		const username = cleanUsername(f.get('username'));
 		const password = String(f.get('password') ?? '');
 		const bad = checkUsername(username) || checkPassword(password);
 		if (bad) return fail(400, { userError: bad, username });

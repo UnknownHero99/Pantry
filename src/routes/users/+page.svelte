@@ -35,7 +35,7 @@
 			<form method="POST" action="?/reset" use:enhance class="actions">
 				<input type="hidden" name="id" value={u.id} />
 				<input type="text" name="username" value={u.username} autocomplete="username" hidden />
-				<input type="password" name="password" placeholder="New password" aria-label="New password for {u.username}" autocomplete="new-password" minlength="10" required />
+				<input type="password" name="password" placeholder="New password" aria-label="New password for {u.username}" autocomplete="new-password" minlength="6" required />
 				<button style="flex: 0 0 auto; width: auto">Set</button>
 			</form>
 			<div class="actions">
@@ -59,7 +59,7 @@
 	<form method="POST" action="?/add" use:enhance class="add">
 		<div class="lbl">Add a person</div>
 		<input type="text" name="username" placeholder="Username" aria-label="Username" autocomplete="off" autocapitalize="none" spellcheck="false" required value={form?.username ?? ''} />
-		<input type="password" name="password" placeholder="Password, 10+ characters" aria-label="Password" autocomplete="new-password" minlength="10" required style="margin-top: 8px" />
+		<input type="password" name="password" placeholder="Password, 6+ characters" aria-label="Password" autocomplete="new-password" minlength="6" required style="margin-top: 8px" />
 		<div class="pills"><label class="pill"><input type="checkbox" name="admin" />Admin</label></div>
 		<button style="margin-top: 12px">Add</button>
 		{#if form?.userError}<p class="note bad">{form.userError}</p>{/if}

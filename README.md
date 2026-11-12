@@ -89,7 +89,7 @@ to rate-limit sign-in per client and to mark the session cookie `Secure`. HSTS b
 
 Everything except the sign-in page needs an account; nothing is readable without one.
 
-- **People** sign in with a username and password (10+ characters, scrypt-hashed). The browser
+- **People** sign in with a username and password (6+ characters, scrypt-hashed). The browser
   gets a random session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` over HTTPS) that lasts 30
   days from the last visit, so phones stay signed in. The database stores only a hash of it.
   **More → Account** changes your password (which signs out your other devices), lists where
