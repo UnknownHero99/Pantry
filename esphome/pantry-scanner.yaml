@@ -52,6 +52,10 @@ packages:
 # Added to the lvgl: block in pantry-ui.yaml.
 lvgl:
   rotation: ${rotation}
+  # The P4 rotates each redrawn area with its PPA and waits for it. Pressing "It was
+  # there, fix count" redrew an area the PPA never finished: the loop hung and the
+  # watchdog restarted the board. Areas rounded to 32 px keep the PPA's blocks aligned.
+  draw_rounding: 32
 
 esp32:
   variant: esp32p4
