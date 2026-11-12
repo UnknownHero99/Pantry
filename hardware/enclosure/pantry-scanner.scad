@@ -11,9 +11,9 @@
 //   shell - everything but the back. Prints lying on its screen face, no supports:
 //           nothing overhangs more than 45 degrees that way, and the arrow is in the
 //           first five layers.
-//   back  - back plate: closes the shell with 4 x M3, hangs on 2 wall screws (keyholes),
-//           and its 4 posts hold the board against the panel (pins in its mounting holes:
-//           for the Guition, bits of 1.75 mm filament pushed into holes in the posts).
+//   back  - back plate: closes the shell with 4 x M3 and hangs on 2 wall screws (keyholes).
+//           For the Sunton and the mainboard its 4 posts hold the board against the panel
+//           (pins in its mounting holes); the Guition is held by the adhesive on its glass.
 // And optionally:
 //   arrow - the arrow on the chin, 1 mm thick, exported where it sits in the shell as
 //           printed (on the bed): load it together with the shell as one object to print
@@ -33,13 +33,20 @@ gm67 = scanner == "gm67";
 function pick(g, s, m) = guition ? g : sunton ? s : m;
 
 /* [Panel: 4.3" 800x480 TFT with capacitive touch] */
-panel_w = pick(117.01, 105.5, 105.5);   // outline of the cover glass
-panel_h = pick(69.41, 67.2, 67.2);
-panel_t = pick(4.8, 5.0, 5.0);          // glass + TFT (+ foam tape)
+// Outline of the cover glass. The Guition's is from its dimension drawing (114.40 x
+// 66.80, the picture centred in it); measure yours and put it here.
+panel_w = pick(114.4, 105.5, 105.5);
+panel_h = pick(66.8, 67.2, 67.2);
+panel_t = pick(4.8, 5.0, 5.0);          // glass + TFT (+ adhesive or foam tape)
 lip = 2.5;                    // how far the bezel covers the glass edge
-// The window in the bezel. The Guition's glass has a wide black border around its
-// 93.6 x 56.16 picture; the window shows the picture and a little of the border.
-win = pick([101, 61.5], [panel_w - 2 * lip, panel_h - 2 * lip], [panel_w - 2 * lip, panel_h - 2 * lip]);
+// The window in the bezel. The Guition's glass has a black border around its 93.6 x 56.16
+// picture, with adhesive on it from the factory that sticks the glass to the inside of
+// the bezel: the window shows the picture and 1.5 mm of border, so the bezel covers the
+// rest (about 3.8 mm above and below, 8.9 mm each side, over the camera hole on the right).
+win = pick([93.6 + 3, 56.16 + 3], [panel_w - 2 * lip, panel_h - 2 * lip], [panel_w - 2 * lip, panel_h - 2 * lip]);
+// Ribs inside the face just above and below the glass, so it goes in straight (its sides
+// are held by the side walls). Lower than the glass, clear of the board behind it.
+rib_h = 2; rib_l = 60;
 
 /* [Shape] */
 tilt = 15;                    // screen face, degrees back from vertical
@@ -63,26 +70,21 @@ back_t = 3;
 /* [Board] */
 // Board coordinates are seen from its back (the side away from the panel), x from the
 // left, y from the top, as in the makers' dimension drawings and KiCad's view of the
-// mainboard. The Guition's board and parts are one block here (its drawing gives only
-// the outline: 102.6 x 65.06, 9 mm deep behind the glass), and it mounts by four
-// 2 mm holes in ears on its frame, 5 mm behind the glass, outside that block.
+// mainboard. The Guition's board and parts are one block here (102.6 x 65.06, 9 mm deep
+// behind the glass, from a P443C spec sheet; not measured on a board). It has no posts:
+// the adhesive on its glass holds it, as Guition means it to be mounted.
 pcb_t = pick(9, 1.6, 1.6);
 pcb_w = pick(102.6, 123, 100);
 pcb_h = pick(65.06, 74, 60);
-pcb_top = pick((69.41 - 65.06) / 2, -3.0, 6.5);   // board's top edge below the panel's top
-pcb_holes = pick([[-2.7, 2.53], [105.3, 2.53], [-2.7, 62.53], [105.3, 62.53]],
+pcb_top = pick((panel_h - pcb_h) / 2, -3.0, 6.5);   // board's top edge below the panel's top
+pcb_holes = pick([],
                  [[3.5, 3.5], [119.5, 3.5], [3.5, 70.5], [119.5, 70.5]],
                  [[3.5, 3.5], [96.5, 3.5], [3.5, 56.5], [96.5, 56.5]]);
-hole_d = pick(2, 3.2, 3.2);
-post_from = pick(5, pcb_t, pcb_t);  // where the back plate's posts land, behind the board's front
-post_d = pick(4.6, 6, 6);           // the posts where they land, beside the board
-post_main = 7.5;                    // and behind it, back to the plate
-post_clear = pick(0.5, 5, 5);       // behind the board, where they can widen: clear of it and its parts
-// A 2 mm hole takes a pin of 1.75 mm filament pushed into the post (a printed 1.6 mm pin
-// snaps off); the boards with 3.2 mm holes get a printed pin.
-filament_pin = hole_d < 2.5;
-post_web = guition;           // a web joining each side's two posts (nothing else is out there)
-web_t = 2.4;
+hole_d = 3.2;
+post_from = pcb_t;            // where the back plate's posts land, behind the board's front
+post_d = 6;                   // the posts where they land, on the board
+post_main = 7.5;              // and behind it, back to the plate
+post_clear = 5;               // behind the board, where they can widen: clear of its parts
 // Room between the board's edges and the side walls, seen from the front. The Sunton's
 // USB-C and P1 sockets face the left wall; P1's plug and cable need about 9 mm.
 room = pick([0, 0], [10, 1], [0, 0]);   // left, right
@@ -176,6 +178,9 @@ module shell() {
 		union() {
 			difference() { outer(); cavity(); }
 			bosses();
+			// ribs above and below the glass
+			if (guition) in_face() for (s = [top_margin - gap - 1.2, top_margin + panel_h + gap])
+				translate([-rib_l / 2, s, wall - 0.01]) cube([rib_l, 1.2, rib_h + 0.01]);
 			// a ring on the floor that holds the speaker over its grille: pointed toward the
 			// screen face outside and toward the back inside (and so outside too, to go round
 			// it), so with the shell on its face no part of it overhangs more than 45 degrees
@@ -269,7 +274,7 @@ module arrow(grow = 0) in_face() translate([0, top_margin + panel_h + chin / 2, 
 led_u = -40;                  // status LED slit, across the mouth
 buzz_xz = [40, 13];           // buzzer module on the floor: right of the screen's centre, out from the back
 spk_d = 28; spk_t = 5;        // the Guition's speaker: round, 8 ohm, on a 1.25 mm 2-pin lead
-spk_xz = [36, 16.5];          // on the floor, cone down, in a ring: right of the screen's centre, out from the back
+spk_xz = [36, 16];            // on the floor, cone down, in a ring: right of the screen's centre, out from the back
 
 // Screw bosses: top corners just below the top bevel, bottom corners above the floor.
 function boss_xy() = [for (x = [-(W / 2 - wall - 3.2), W / 2 - wall - 3.2], y = [9, face_top_y - 6]) [x, y]];
@@ -321,7 +326,7 @@ module back() {
 					translate([0, 0, tip]) cylinder(d = post_d, h = post_wide - tip + 0.01);
 					translate([0, 0, post_wide]) cylinder(d1 = post_d, d2 = post_main, h = cone);
 					translate([0, 0, post_wide + cone - 0.01]) cylinder(d = post_main, h = w_wall(s) - post_wide - cone + 1);
-					if (!filament_pin) translate([0, 0, tip - min(post_from, 2.5) + 0.2]) cylinder(d = hole_d - 0.4, h = min(post_from, 2.5));   // pin in the hole
+					translate([0, 0, tip - min(post_from, 2.5) + 0.2]) cylinder(d = hole_d - 0.4, h = min(post_from, 2.5));   // pin in the hole
 				}
 				// the flare: along the post's lean both ways, and in toward the middle
 				hull() {
@@ -332,16 +337,10 @@ module back() {
 					}
 				}
 			}
-			// a web joining each side's two posts, behind the board
-			if (post_web) for (p = [[pcb_holes[0], pcb_holes[2]], [pcb_holes[1], pcb_holes[3]]]) let(s1 = bs(p[0][1]), s2 = bs(p[1][1]))
-				in_face() translate([bu(p[0][0]), 0, 0]) multmatrix([[0, 0, 1, -web_t / 2], [1, 0, 0, 0], [0, 1, 0, 0]])
-					linear_extrude(web_t) polygon([[s1, post_wide + 1], [s2, post_wide + 1], [s2, w_wall(s2) + 1], [s1, w_wall(s1) + 1]]);
 		}
 		// the lip makes way for the USB cable's notch and the speaker's ring
 		if (guition) translate([cable_x - 4, wall - 1, -0.01]) cube([8, 4, 2.1]);
 		if (guition) translate([scr_x + spk_xz[0] - spk_d / 2 - 3, wall - 1, -0.01]) cube([spk_d + 6, 5, 2.1]);
-		// a hole down each post for its filament pin
-		if (filament_pin) for (h = pcb_holes) in_face() translate([bu(h[0]), bs(h[1]), board_w + post_from - 0.01]) cylinder(d = 2, h = 4.01, $fn = 16);   // 4 deep: a 6 mm piece sticks out 2
 		// clear of the bosses, and countersunk screws into them
 		for (b = boss_xy()) {
 			linear_extrude(3) boss_shape(b, 0.4);
@@ -371,11 +370,6 @@ module pcb() {
 			   [112, 70, 7.2, 10, 4.5]],         // P4 with its plug, out past the bottom
 			  [[59, -6, 18, 25.5, 3.2]]);        // ESP32 module, antenna over the top edge
 		for (p = on_board) translate([bu(p[0]), bs(p[1]), board_w + pcb_t]) cube([p[2], p[3], p[4]]);
-		// the Guition's mounting ears, at its corners
-		if (guition) for (h = pcb_holes) translate([bu(h[0]), bs(h[1]), board_w]) difference() {
-			translate([-2.5, -2.5, 0]) cube([5, 5, post_from]);
-			translate([0, 0, -1]) cylinder(d = hole_d, h = post_from + 2);
-		}
 	}
 	if (guition) translate([scr_x + spk_xz[0], wall, spk_xz[1]]) rotate([-90, 0, 0]) cylinder(d = spk_d, h = spk_t);   // speaker
 	if (sunton) translate([scr_x + buzz_xz[0] - 11, wall, buzz_xz[1] - 7.5]) cube([22, 9.6, 15]);   // buzzer down

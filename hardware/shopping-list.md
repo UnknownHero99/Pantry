@@ -56,7 +56,7 @@ a look too: €22.78 before the sale (Shop1102210483), €23.19 (WAVGAT authoriz
 - **5 V 2 A USB charger** with a USB-A port. A phone charger you trust beats a €3 no-name
   one for something plugged in all day.
 - A soldering iron and solder, for the LED board, which has solder pads, not pins.
-- Thin double-sided foam tape and hot glue.
+- Hot glue.
 - 2 wall screws with heads up to 8 mm, and plugs for your wall.
 - About 150 g of PETG or PLA for the [case](enclosure). Its two parts are about 116 cm³
   of plastic if printed solid, so less with normal infill.
