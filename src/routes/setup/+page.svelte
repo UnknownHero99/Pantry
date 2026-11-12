@@ -14,7 +14,7 @@
 		<label class="lbl" for="code">Setup code</label>
 		<input id="code" name="code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" required />
 		<label class="lbl" for="username">Username</label>
-		<input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required value={form?.username ?? ''} />
+		<input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required defaultValue={form?.username ?? ''} />
 		<label class="lbl" for="password">Password <span class="hint">6+ characters</span></label>
 		<input id="password" name="password" type="password" autocomplete="new-password" minlength="6" required />
 		<label class="lbl" for="password2">Password again</label>

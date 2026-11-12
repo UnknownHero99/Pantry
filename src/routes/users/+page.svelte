@@ -58,7 +58,7 @@
 
 	<form method="POST" action="?/add" use:enhance class="add">
 		<div class="lbl">Add a person</div>
-		<input type="text" name="username" placeholder="Username" aria-label="Username" autocomplete="off" autocapitalize="none" spellcheck="false" required value={form?.username ?? ''} />
+		<input type="text" name="username" placeholder="Username" aria-label="Username" autocomplete="off" autocapitalize="none" spellcheck="false" required defaultValue={form?.username ?? ''} />
 		<input type="password" name="password" placeholder="Password, 6+ characters" aria-label="Password" autocomplete="new-password" minlength="6" required style="margin-top: 8px" />
 		<div class="pills"><label class="pill"><input type="checkbox" name="admin" />Admin</label></div>
 		<button style="margin-top: 12px">Add</button>

@@ -11,7 +11,7 @@
 	<form method="POST" onsubmit={() => (busy = true)}>
 		<input type="hidden" name="next" value={data.next} />
 		<label class="lbl" for="username">Username</label>
-		<input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required value={form?.username ?? ''} />
+		<input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required defaultValue={form?.username ?? ''} />
 		<label class="lbl" for="password">Password</label>
 		<input id="password" name="password" type="password" autocomplete="current-password" required />
 		{#if form?.error}<p class="note bad" role="alert">{form.error}</p>{/if}
