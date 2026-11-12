@@ -141,7 +141,8 @@ lvgl:
             x: 0
             y: 0
             width: 800
-            height: 56
+            height: 62
+            pad_top: 12   # its row sits 6 px lower: right under the edge it looked cramped
             pad_left: 20
             pad_right: 20
             scrollable: false
@@ -160,7 +161,8 @@ lvgl:
             x: 0
             y: 0
             width: 800
-            height: 56
+            height: 62
+            pad_top: 12   # its row sits 6 px lower: right under the edge it looked cramped
             pad_left: 20
             pad_right: 20
             bg_opa: COVER
@@ -197,7 +199,7 @@ lvgl:
         - obj:
             id: stage
             x: 20
-            y: 60
+            y: 66
             width: 760
             height: 316
             scrollable: false
@@ -744,7 +746,7 @@ lvgl:
         - obj:
             id: seg
             x: 20
-            y: 390
+            y: 394
             width: 568
             height: 72
             radius: 20
@@ -781,7 +783,7 @@ lvgl:
         - button:
             id: btn_undo
             x: 600
-            y: 390
+            y: 394
             width: 180
             height: 72
             radius: 20
