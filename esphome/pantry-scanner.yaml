@@ -31,6 +31,7 @@ substitutions:
   location: Pantry                     # where this unit hangs; used for products with no usual place yet
   timezone: Europe/Ljubljana           # for the clock
   scanner_baud: "9600"                 # GM67 / GM65 default; set a SparkFun DE2120 to 9600 too, or change this
+  scanner_beep: "true"                 # the GM67's own beep on a read; "false" leaves it to the speaker
   # Early ESP32-P4 chips (revision v1.x) need a build for them. The first USB flash
   # prints "Chip is ESP32-P4 (revision v1.3)" or similar: below v3.0, set this to "true".
   engineering_sample: "false"
@@ -135,10 +136,56 @@ uart:
       sequence:
         - lambda: |-
             UARTDebug::log_hex(direction, bytes, ':');   // every read, in the log
+            // The GM67's answers to commands are packets: a length byte (the size without
+            // the 2-byte checksum), then an opcode of 0x80 or more (D0 ACK, D1 NAK, A4
+            // revision). A barcode is plain text, so it never looks like that.
+            if (bytes.size() >= 4 && bytes[0] == bytes.size() - 2 && bytes[1] >= 0x80) {
+              if (bytes[1] == 0xA4) {
+                std::string rev;
+                for (auto b : bytes) if (b >= 32 && b < 127) rev += (char) b;
+                ESP_LOGI("gm67", "Scanner revision: %s", rev.c_str());
+              } else {
+                ESP_LOGI("gm67", "Scanner answered %s", bytes[1] == 0xD0 ? "OK" : bytes[1] == 0xD1 ? "NAK" : "?");
+              }
+              return;
+            }
             std::string code;
             for (auto b : bytes) if (b > 32 && b < 127) code += (char) b;
             // Held in front of the window, a code is read and counted about twice a second.
             if (!code.empty()) id(handle_scan)->execute(code);
+
+# Commands to the GM67 (its manual, appendix 6). It may be asleep, so a 0x00 wakes it
+# first; it answers each with a packet the reader above logs instead of scanning.
+script:
+  - id: scanner_cmd
+    mode: queued
+    max_runs: 8
+    parameters:
+      cmd: int[]
+    then:
+      - uart.write: { id: scanner_uart, data: [0x00] }
+      - delay: 50ms
+      - lambda: |-
+          std::vector<uint8_t> v(cmd.begin(), cmd.end());
+          id(scanner_uart).write_array(v.data(), v.size());
+      - delay: 150ms
+
+# The board sets the scanner up itself at start (and daily, in case it was swapped),
+# so a new or reset GM67 needs no setup barcodes: CR after each code, its beep per
+# scanner_beep, and its revision in the log, which proves the link works both ways.
+interval:
+  - interval: 24h
+    startup_delay: 8s
+    then:
+      - script.execute: { id: scanner_cmd, cmd: [0x04, 0xA3, 0x04, 0x00, 0xFF, 0x55] }               # revision
+      - script.execute: { id: scanner_cmd, cmd: [0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x05, 0x02, 0xFE, 0x2D] }   # CR after each code
+      - if:
+          condition:
+            lambda: 'return ${scanner_beep};'
+          then:
+            - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x01, 0xFE, 0xEE] }   # beep on a read
+          else:
+            - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x00, 0xFE, 0xEF] }   # silent
 
 # The DSI PHY's 2.5 V supply.
 esp_ldo:
