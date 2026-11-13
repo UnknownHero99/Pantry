@@ -111,6 +111,13 @@ update:
     type: http
     source: https://esphome.github.io/esp-hosted-firmware/manifest/esp32c6.json
 
+# Wi-Fi signal, in Home Assistant and the log: weaker than about -75 dB drops now and
+# then. Shows what an antenna or another spot changes.
+sensor:
+  - platform: wifi_signal
+    name: Wi-Fi signal
+    update_interval: 60s
+
 # The clock comes from Home Assistant, or from the internet (NTP) when the scanner isn't
 # in Home Assistant or it's down: both set the same system clock, which the screens read
 # through ha_time. Without a timezone here it would be the build machine's (UTC in Docker).
