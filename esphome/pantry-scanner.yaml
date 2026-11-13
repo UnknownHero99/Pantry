@@ -30,11 +30,11 @@ substitutions:
   token: !secret pantry_token         # device token: app → More → Users & devices
   location: Pantry                     # where this unit hangs; used for products with no usual place yet
   timezone: Europe/Ljubljana           # for the clock
-  sleep_after: 1min                    # no touch or scan this long: the screen dims (at night the scanner sleeps too)
+  # First values of the settings on the web page (they're changed there after that):
+  sleep_after: "60"                    # seconds without a touch or scan: the screen dims (at night the scanner sleeps too)
   scanner_baud: "9600"                 # GM67 / GM65 default; set a SparkFun DE2120 to 9600 too, or change this
-  scanner_beep: "true"                 # the GM67's own beep on a read; "false" leaves it to the speaker
-  # Night: the scanner is off while the screen sleeps, so nothing scans in the dark by
-  # accident; a tap on the screen turns it on until it sleeps again. Hours, 0-23.
+  # Night: the scanner sleeps while the screen does, so nothing scans in the dark by
+  # accident; a tap on the screen wakes both. Hours, 0-23.
   night_from: "23"
   night_until: "6"
   # Early ESP32-P4 chips (revision v1.x) need a build for them. The first USB flash
@@ -118,6 +118,94 @@ sensor:
   - platform: wifi_signal
     name: Wi-Fi signal
     update_interval: 60s
+  - platform: uptime
+    name: Uptime
+    entity_category: diagnostic
+
+# Status and settings on a web page of the scanner's own, http://<its address>/ (user
+# admin, password web_password in secrets.yaml), as well as in Home Assistant. It can't
+# take a firmware: that goes over the API (and its key) or USB.
+web_server:
+  port: 80
+  version: 3
+  local: true     # its scripts come from the scanner, not the internet
+  ota: false
+  log: true
+  auth:
+    username: admin
+    password: !secret web_password
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP address
+      entity_category: diagnostic
+    ssid:
+      name: Wi-Fi network
+      entity_category: diagnostic
+  - platform: version
+    name: Firmware
+    hide_timestamp: false
+  - platform: template
+    id: scanner_state
+    name: Scanner
+    icon: mdi:barcode-scan
+  - platform: template
+    id: scanner_rev
+    name: Scanner revision
+    entity_category: diagnostic
+
+binary_sensor:
+  - platform: template
+    name: Server reachable
+    device_class: connectivity
+    lambda: "return id(online);"
+
+number:
+  - platform: template
+    id: night_from_h
+    name: Night from
+    icon: mdi:weather-night
+    entity_category: config
+    unit_of_measurement: h
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+    initial_value: ${night_from}
+    optimistic: true
+    restore_value: true
+  - platform: template
+    id: night_until_h
+    name: Night until
+    icon: mdi:weather-sunset-up
+    entity_category: config
+    unit_of_measurement: h
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+    initial_value: ${night_until}
+    optimistic: true
+    restore_value: true
+
+# The scanner's own sounds: its beep on a read (a setting), and on demand.
+button:
+  - platform: template
+    name: Scanner beep
+    icon: mdi:bell-ring
+    on_press:
+      - script.execute: { id: scanner_cmd, cmd: [0x05, 0xE6, 0x04, 0x00, 0x00, 0xFF, 0x11] }
+  - platform: template
+    name: Scanner beep 2
+    icon: mdi:bell-ring-outline
+    on_press:
+      - script.execute: { id: scanner_cmd, cmd: [0x05, 0xE6, 0x04, 0x00, 0x01, 0xFF, 0x10] }
+  - platform: template
+    name: Speaker test
+    icon: mdi:speaker
+    on_press:
+      - script.execute: { id: feedback, kind: "in" }
 
 # The clock comes from Home Assistant, or from the internet (NTP) when the scanner isn't
 # in Home Assistant or it's down: both set the same system clock, which the screens read
@@ -156,6 +244,7 @@ uart:
                 std::string rev;
                 for (auto b : bytes) if (b >= 32 && b < 127) rev += (char) b;
                 ESP_LOGI("gm67", "Scanner revision: %s", rev.c_str());
+                id(scanner_rev).publish_state(rev);
               } else {
                 ESP_LOGI("gm67", "Scanner answered %s", bytes[1] == 0xD0 ? "OK" : bytes[1] == 0xD1 ? "NAK" : "?");
               }
@@ -183,8 +272,8 @@ script:
       - delay: 150ms
 
 # The board sets the scanner up itself at start (and daily, in case it was swapped),
-# so a new or reset GM67 needs no setup barcodes: CR after each code, its beep per
-# scanner_beep, and its revision in the log, which proves the link works both ways.
+# so a new or reset GM67 needs no setup barcodes: CR after each code, its beep per the
+# Scanner beeps setting, and its revision in the log, which proves the link works both ways.
 interval:
   - interval: 24h
     startup_delay: 8s
@@ -193,7 +282,7 @@ interval:
       - script.execute: { id: scanner_cmd, cmd: [0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x05, 0x02, 0xFE, 0x2D] }   # CR after each code
       - if:
           condition:
-            lambda: 'return ${scanner_beep};'
+            lambda: "return id(scanner_beeps).state;"
           then:
             - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x01, 0xFE, 0xEE] }   # beep on a read
           else:
@@ -207,15 +296,18 @@ interval:
       - lambda: |-
           if (millis() < 15000) return;   // after the setup above
           auto t = id(ha_time).now();
-          bool night = t.is_valid() && (${night_from} > ${night_until}
-              ? (t.hour >= ${night_from} || t.hour < ${night_until})
-              : (t.hour >= ${night_from} && t.hour < ${night_until}));
+          int from = (int) id(night_from_h).state, until = (int) id(night_until_h).state;
+          bool night = t.is_valid() && from != until && (from > until
+              ? (t.hour >= from || t.hour < until)
+              : (t.hour >= from && t.hour < until));
           enum { ON, OFF, SLEEP };
           int want = night && id(asleep) ? SLEEP : id(undo_open) ? OFF : ON;
           static int state = -1;
           if (want == state) return;
           state = want;
-          ESP_LOGI("gm67", "Scanner %s", want == SLEEP ? "asleep: night, screen asleep" : want == OFF ? "off: UNDO list open" : "on");
+          const char *what = want == SLEEP ? "asleep: night, screen asleep" : want == OFF ? "off: UNDO list open" : "on";
+          ESP_LOGI("gm67", "Scanner %s", what);
+          id(scanner_state).publish_state(what);
           id(scanner_cmd)->execute(want == SLEEP ? std::vector<int>{0x04, 0xEB, 0x04, 0x00, 0xFF, 0x0D}   // SLEEP
                                  : want == OFF   ? std::vector<int>{0x04, 0xEA, 0x04, 0x00, 0xFF, 0x0E}   // SCAN_DISABLE
                                                  : std::vector<int>{0x04, 0xE9, 0x04, 0x00, 0xFF, 0x0F}); // SCAN_ENABLE
@@ -272,6 +364,18 @@ switch:
     pin: GPIO11
     restore_mode: ALWAYS_ON
     internal: true
+  # A setting: the GM67's own beep on a read, or silent and the speaker beeps alone.
+  - platform: template
+    id: scanner_beeps
+    name: Scanner beeps on a read
+    icon: mdi:volume-high
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x01, 0xFE, 0xEE] }
+    turn_off_action:
+      - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x00, 0xFE, 0xEF] }
 
 rtttl:
   speaker: speaker_out

@@ -37,7 +37,7 @@ inline void no_scroll(lv_obj_t *o) {
   lv_obj_remove_flag(o, LV_OBJ_FLAG_SCROLLABLE);
   for (uint32_t i = 0; i < lv_obj_get_child_count(o); i++) no_scroll(lv_obj_get_child(o, i));
 }
-inline void text(lv_obj_t *o, const std::string &s) { lv_label_set_text(o, s.c_str()); }
+inline void set_text(lv_obj_t *o, const std::string &s) { lv_label_set_text(o, s.c_str()); }
 inline void fg(lv_obj_t *o, uint32_t c) { lv_obj_set_style_text_color(o, lv_color_hex(c), LV_PART_MAIN); }
 inline void bg(lv_obj_t *o, uint32_t c) { lv_obj_set_style_bg_color(o, lv_color_hex(c), LV_PART_MAIN); }
 inline void border(lv_obj_t *o, uint32_t c) { lv_obj_set_style_border_color(o, lv_color_hex(c), LV_PART_MAIN); }

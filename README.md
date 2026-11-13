@@ -286,6 +286,26 @@ hasn't run on a board yet. The display and Wi-Fi settings are ESPHome's own for 
 If the picture is upside down, set `rotation: "270"`. Touch is polled, because the
 sources disagree on its reset and interrupt pins.
 
+### Status page
+
+The scanner serves its own page at `http://<its address>/`. The user is `admin`, and the
+password is `web_password` in `secrets.yaml`, which you make up. It shows the Wi-Fi signal,
+IP address, uptime, firmware, whether the server is reachable, the last scan, the scanner's
+state (on, off, asleep) and its revision, along with the live log. Its settings stay set
+across restarts, and Home Assistant shows them too:
+
+| Setting | |
+|---|---|
+| Sleep after | Seconds without a touch or scan before the screen dims (60) |
+| Night from / until | Hours when the scanner sleeps along with the screen (23–6) |
+| Scanner beeps on a read | The GM67's own beep; off leaves it to the speaker |
+| Location | Shown top right, and where new products go |
+| Backlight, Status LED | |
+
+There are also buttons to make the scanner beep (two tones) and to test the speaker. The
+page can't take a firmware: that goes over USB or the API with its key. The substitutions
+at the top of `pantry-scanner.yaml` only give the settings their first values.
+
 ### Try it without the hardware
 
 `pantry-sim.yaml` runs the same screens in an 800×480 window on a Linux desktop (X11).
