@@ -30,6 +30,7 @@ substitutions:
   token: !secret pantry_token         # device token: app → More → Users & devices
   location: Pantry                     # where this unit hangs; used for products with no usual place yet
   timezone: Europe/Ljubljana           # for the clock
+  sleep_after: 1min                    # no touch or scan this long: the screen dims (at night the scanner sleeps too)
   scanner_baud: "9600"                 # GM67 / GM65 default; set a SparkFun DE2120 to 9600 too, or change this
   scanner_beep: "true"                 # the GM67's own beep on a read; "false" leaves it to the speaker
   # Night: the scanner is off while the screen sleeps, so nothing scans in the dark by

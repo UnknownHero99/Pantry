@@ -127,7 +127,7 @@ lvgl:
   buffer_size: 25%
   default_font: f20
   on_idle:
-    timeout: 5min
+    timeout: ${sleep_after}
     then:
       - script.execute: go_to_sleep
   theme:
@@ -814,7 +814,7 @@ lvgl:
                   else:
                     - script.execute: open_undo
 
-    # Dimmed ambient screen after 5 min without a touch or scan
+    # Dimmed ambient screen after sleep_after (1 min) without a touch or scan
     - id: night_page
       bg_color: 0x181818
       scrollable: false

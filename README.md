@@ -331,7 +331,7 @@ middle, and a fixed bottom bar: **TAKE OUT | PUT AWAY** and **UNDO**.
   tap closes the list.
 - **Server unreachable:** keep scanning. Scans wait on the scanner and are sent when the
   server is back (kept in RAM, so a power cut loses them).
-- After 5 minutes without a touch or scan it shows a dim clock with what to buy and use
+- After a minute without a touch or scan (`sleep_after`) it shows a dim clock with what to buy and use
   soon; a touch or scan wakes it.
 
 ## Home Assistant
