@@ -32,6 +32,10 @@ substitutions:
   timezone: Europe/Ljubljana           # for the clock
   scanner_baud: "9600"                 # GM67 / GM65 default; set a SparkFun DE2120 to 9600 too, or change this
   scanner_beep: "true"                 # the GM67's own beep on a read; "false" leaves it to the speaker
+  # Night: the scanner is off while the screen sleeps, so nothing scans in the dark by
+  # accident; a tap on the screen turns it on until it sleeps again. Hours, 0-23.
+  night_from: "23"
+  night_until: "6"
   # Early ESP32-P4 chips (revision v1.x) need a build for them. The first USB flash
   # prints "Chip is ESP32-P4 (revision v1.3)" or similar: below v3.0, set this to "true".
   engineering_sample: "false"
@@ -186,6 +190,24 @@ interval:
             - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x01, 0xFE, 0xEE] }   # beep on a read
           else:
             - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x00, 0xFE, 0xEF] }   # silent
+
+  # Scanning off while the UNDO list is open (a stray read would land mid-undo), and at
+  # night while the screen sleeps. A command only when that changes.
+  - interval: 1s
+    then:
+      - lambda: |-
+          if (millis() < 15000) return;   // after the setup above
+          auto t = id(ha_time).now();
+          bool night = t.is_valid() && (${night_from} > ${night_until}
+              ? (t.hour >= ${night_from} || t.hour < ${night_until})
+              : (t.hour >= ${night_from} && t.hour < ${night_until}));
+          bool off = id(undo_open) || (night && id(asleep));
+          static int state = -1;
+          if ((int) off == state) return;
+          state = off;
+          ESP_LOGI("gm67", "Scanning %s", off ? (id(undo_open) ? "off: UNDO list open" : "off: night, screen asleep") : "on");
+          id(scanner_cmd)->execute(off ? std::vector<int>{0x04, 0xEA, 0x04, 0x00, 0xFF, 0x0E}    // SCAN_DISABLE
+                                       : std::vector<int>{0x04, 0xE9, 0x04, 0x00, 0xFF, 0x0F});  // SCAN_ENABLE
 
 # The DSI PHY's 2.5 V supply.
 esp_ldo:

@@ -54,6 +54,10 @@ globals:
   # The photo now in img_product: a result for the same product keeps it, with no new
   # download (one still running refuses another, and the photo never showed).
   - { id: photo_shown, type: std::string, initial_value: '""' }
+  # The photo being downloaded, and since when: a download that stalls (Wi-Fi gone
+  # mid-photo) never ends by itself and refuses every later one, so it's dropped.
+  - { id: photo_pending, type: std::string, initial_value: '""' }
+  - { id: photo_started, type: uint32_t, initial_value: "0" }
 
 # ── look ────────────────────────────────────────────────────────────────
 
@@ -99,12 +103,21 @@ image:
     resize: 168x168
     update_interval: never
     on_download_finished:
-      - lambda: id(photo_shown) = id(photo_url);
+      - lambda: |-
+          id(photo_shown) = id(photo_pending);
+          id(photo_pending) = "";
       - lvgl.image.update: { id: img_product, src: product_img }
-      - lvgl.widget.show: img_product
-      - lvgl.widget.hide: media_icon
+      # Shown only on the card it's for: the screen may have moved on to another product.
+      - if:
+          condition:
+            lambda: "return id(photo_shown) == id(photo_url);"
+          then:
+            - lvgl.widget.show: img_product
+            - lvgl.widget.hide: media_icon
     on_error:
-      - lambda: id(photo_shown) = "";
+      - lambda: |-
+          id(photo_shown) = "";
+          id(photo_pending) = "";
       - lvgl.widget.hide: img_product
       - lvgl.widget.show: media_icon
 
@@ -1088,10 +1101,7 @@ script:
           condition:
             lambda: "return !id(photo_url).empty() && id(photo_url) != id(photo_shown);"
           then:
-            - online_image.set_url:
-                id: product_img
-                url: !lambda "return id(photo_url);"
-            - component.update: product_img
+            - script.execute: fetch_photo
       - if:
           condition:
             lambda: 'return pantry::last.status == "lookup";'
@@ -1216,6 +1226,25 @@ script:
                           lambda: "return response->status_code == 200 && pantry::parse_reply(body, pantry::last);"
                         then:
                           - script.execute: render_reply
+
+  # Download photo_url into img_product. One already coming for the same product carries
+  # on (a held barcode is read twice a second); any other one in progress is dropped,
+  # or the downloader would refuse this one.
+  - id: fetch_photo
+    then:
+      - lambda: |-
+          auto *img = id(product_img);
+          if (img->is_decoding()) {
+            if (id(photo_pending) == id(photo_url) && millis() - id(photo_started) < 10000) return;
+            pantry::show(id(img_product), false);   // it shows the buffer release() frees
+            pantry::show(id(media_icon), true);
+            img->release();
+            id(photo_shown) = "";
+          }
+          id(photo_pending) = id(photo_url);
+          id(photo_started) = millis();
+          img->set_url(id(photo_url));
+          img->update();
 
   - id: fix_count
     then:
@@ -1447,6 +1476,17 @@ script:
             - lvgl.page.show: { id: main_page, animation: FADE_IN, time: 300ms }
 
 interval:
+  # A photo download that has run for 10 s has stalled: drop it, show the icon.
+  - interval: 2s
+    then:
+      - lambda: |-
+          if (!id(product_img).is_decoding() || millis() - id(photo_started) < 10000) return;
+          ESP_LOGW("photo", "Download of %s stalled, dropped", id(photo_pending).c_str());
+          pantry::show(id(img_product), false);   // it shows the buffer release() frees
+          pantry::show(id(media_icon), true);
+          id(product_img).release();
+          id(photo_shown) = "";
+          id(photo_pending) = "";
   # Clock, and the put-away countdown.
   - interval: 1s
     then:
