@@ -8,9 +8,10 @@
 //   mainboard - hardware/mainboard behind a bare 4.3" 800x480 capacitive panel.
 //
 // Two printed parts:
-//   shell - everything but the back. Prints lying on its screen face, no supports:
-//           nothing overhangs more than 45 degrees that way, and the arrow is in the
-//           first five layers.
+//   shell - everything but the back. Prints lying on its screen face: nothing overhangs
+//           more than 45 degrees that way, and the arrow is in the first five layers,
+//           except the ledge in the Guition's glass pocket, which needs supports from
+//           the build plate (1.6 mm tall, only in the pocket).
 //   back  - back plate: closes the shell with 4 x M3 and hangs on 2 wall screws (keyholes).
 //           For the Sunton and the mainboard its 4 posts hold the board against the panel
 //           (pins in its mounting holes); the Guition is held by the adhesive on its glass.
@@ -38,15 +39,17 @@ function pick(g, s, m) = guition ? g : sunton ? s : m;
 panel_w = pick(114.4, 105.5, 105.5);
 panel_h = pick(66.8, 67.2, 67.2);
 panel_t = pick(4.8, 5.0, 5.0);          // glass + TFT (+ adhesive or foam tape)
+// The Guition goes in from the front: its glass sits flush in a pocket in the face, stuck
+// by the adhesive on its border to the ledge round the pocket's floor, and the module
+// behind the glass passes through an opening the size of its board. The Sunton and the
+// mainboard sit behind a bezel, its window `win`.
+front_glass = guition;
+glass_t = 1.6;                // the cover glass: the pocket's depth, so it sits flush (measure yours)
+glass_bevel = 0.8;            // 45-degree bevel round the pocket's edge, to guide the glass in
+rim = 4.5;                    // face round the pocket
+ledge_t = 2;                  // the face behind the glass, thicker there for the adhesive to hold on
 lip = 2.5;                    // how far the bezel covers the glass edge
-// The window in the bezel. The Guition's glass has a black border around its 93.6 x 56.16
-// picture, with adhesive on it from the factory that sticks the glass to the inside of
-// the bezel: the window shows the picture and 1.5 mm of border, so the bezel covers the
-// rest (about 3.8 mm above and below, 8.9 mm each side, over the camera hole on the right).
-win = pick([93.6 + 3, 56.16 + 3], [panel_w - 2 * lip, panel_h - 2 * lip], [panel_w - 2 * lip, panel_h - 2 * lip]);
-// Ribs inside the face just above and below the glass, so it goes in straight (its sides
-// are held by the side walls). Lower than the glass, clear of the board behind it.
-rib_h = 2; rib_l = 60;
+win = [panel_w - 2 * lip, panel_h - 2 * lip];
 
 /* [Shape] */
 tilt = 15;                    // screen face, degrees back from vertical
@@ -63,7 +66,7 @@ depth_top = max(pick(28, 24, 24), gm67 ? 31 : 0);
 wall = 2.2;
 gap = 0.4;                    // around the panel
 round_r = 2.5;                // edge rounding
-corner_top = 30;              // front-view corner radius, top
+corner_top = front_glass ? 16 : 30;   // front-view corner radius, top (16 keeps it clear of the glass pocket)
 corner_bottom = 6;
 back_t = 3;
 
@@ -111,8 +114,9 @@ $fn = 40;
 
 // ── derived ──────────────────────────────────────────────────────────────
 // Inside, from the screen's centre to each side wall; the case is centred on x = 0.
-in_l = max(panel_w / 2 + gap, pcb_w / 2 + room[0]);
-in_r = max(panel_w / 2 + gap, pcb_w / 2 + room[1]);
+face_half = panel_w / 2 + gap + (front_glass ? rim - wall : 0);   // the glass, or its pocket and rim
+in_l = max(face_half, pcb_w / 2 + room[0]);
+in_r = max(face_half, pcb_w / 2 + room[1]);
 W = in_l + in_r + 2 * wall;                         // outside width
 scr_x = (in_l - in_r) / 2;                          // the screen's centre
 s_face = top_margin + panel_h + chin;               // screen face length, top to mouth
@@ -133,7 +137,7 @@ module in_mouth() multmatrix([[1, 0, 0, scr_x], [0, -sin(mouth_angle), cos(mouth
 // A board point (x, y seen from its back) in the face frame.
 function bu(x) = pcb_w / 2 - x;
 function bs(y) = top_margin + pcb_top + y;
-board_w = wall + panel_t;                           // the board's front face, in w
+board_w = (front_glass ? 0 : wall) + panel_t;       // the board's front face, in w
 post_wide = board_w + pcb_t + post_clear;
 // The back plate's inside (z = 0) in the face frame, and a face-frame point's height.
 function w_wall(s) = (depth_top + s * sin(tilt)) / cos(tilt);
@@ -178,9 +182,11 @@ module shell() {
 		union() {
 			difference() { outer(); cavity(); }
 			bosses();
-			// ribs above and below the glass
-			if (guition) in_face() for (s = [top_margin - gap - 1.2, top_margin + panel_h + gap])
-				translate([-rib_l / 2, s, wall - 0.01]) cube([rib_l, 1.2, rib_h + 0.01]);
+			// behind the glass pocket the face is thicker, for the ledge the glass sticks to
+			if (front_glass) intersection() {
+				in_face() translate([-in_l - 1, top_margin - gap - 3, wall - 0.01]) cube([in_l + in_r + 2, panel_h + 2 * gap + 6, glass_t + ledge_t - wall + 0.01]);
+				cavity();
+			}
 			// a ring on the floor that holds the speaker over its grille: pointed toward the
 			// screen face outside and toward the back inside (and so outside too, to go round
 			// it), so with the shell on its face no part of it overhangs more than 45 degrees
@@ -227,8 +233,19 @@ module shell() {
 				}
 			}
 		}
+		// Guition: a pocket for the glass, flush with the face, bevelled at its edge, and the
+		// module's opening (its board's outline) through the ledge behind it
+		if (front_glass) in_face() {
+			pw = panel_w + 2 * gap; ph = panel_h + 2 * gap;
+			translate([-pw / 2, top_margin - gap, -1]) cube([pw, ph, 1 + glass_t]);
+			hull() {
+				translate([-pw / 2 - glass_bevel, top_margin - gap - glass_bevel, -0.02]) cube([pw + 2 * glass_bevel, ph + 2 * glass_bevel, 0.02]);
+				translate([-pw / 2, top_margin - gap, glass_bevel]) cube([pw, ph, 0.02]);
+			}
+			translate([bu(pcb_w) - gap, bs(0) - gap, glass_t - 0.01]) cube([pcb_w + 2 * gap, pcb_h + 2 * gap, ledge_t + 0.02]);
+		}
 		// screen window, edges chamfered 45 degrees (so its top edge needs no bridge)
-		in_face() hull() {
+		if (!front_glass) in_face() hull() {
 			wm = (panel_h - win[1]) / 2;
 			translate([-win[0] / 2, top_margin + wm, wall - 0.01]) cube([win[0], win[1], 0.02]);
 			translate([-win[0] / 2 - wall, top_margin + wm - wall, -0.02]) cube([win[0] + 2 * wall, win[1] + 2 * wall, 0.02]);
@@ -356,7 +373,10 @@ module back() {
 }
 
 // ── stand-ins for the pictures ───────────────────────────────────────────
-module panel() in_face() translate([-panel_w / 2, top_margin, wall]) cube([panel_w, panel_h, panel_t - 0.4]);
+module panel() in_face() if (front_glass) {
+	translate([-panel_w / 2, top_margin, 0.05]) cube([panel_w, panel_h, glass_t - 0.1]);          // glass, in its pocket
+	translate([bu(pcb_w), bs(0), glass_t]) cube([pcb_w, pcb_h, panel_t - glass_t - 0.05]);    // the TFT behind it
+} else translate([-panel_w / 2, top_margin, wall]) cube([panel_w, panel_h, panel_t - 0.4]);
 // The board with its tallest parts (and the plugs in it), and the sound and LED modules.
 module pcb() {
 	in_face() {

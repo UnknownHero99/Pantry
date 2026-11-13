@@ -15,7 +15,7 @@ optional [mainboard](../mainboard) or the SparkFun scanner, see
 | ![Inside](renders/inside.png) | ![Exploded](renders/exploded.png) |
 | Inside, back plate off: the board behind its screen with the plugs on its header and USB-C, the scanner in the mouth, the LED module and the speaker on the floor | Back plate: keyholes for the wall screws and a lip that keys into the shell |
 
-Outside about **120 wide × 133 high × 58 deep** (mm, including the back plate).
+Outside about **124 wide × 133 high × 58 deep** (mm, including the back plate).
 
 ## The shape
 
@@ -35,7 +35,7 @@ Seen from the front the top corners are rounded (30 mm), the bottom ones slightl
 
 | File | Print |
 |---|---|
-| [stl/pantry-scanner-shell.stl](stl/pantry-scanner-shell.stl) | Everything but the back. **Lies on its screen face, no supports** (the STL comes that way round): nothing overhangs more than 45° except the rounded edges of the face in the first 0.7 mm and the 1.6 mm ends of the speaker grille's slots. That's why the top slopes at 30° (the face leans 15°), the screw bosses' ends, the scanner fins' lips and the speaker ring are pointed, and the scanner window and LED slit widen inward on their floor side. PETG or PLA, 0.2 mm layers, 3 walls. |
+| [stl/pantry-scanner-shell.stl](stl/pantry-scanner-shell.stl) | Everything but the back. **Lies on its screen face** (the STL comes that way round), with **supports from the build plate only in the glass pocket**: the ledge the glass sticks to stands about 6 mm over it. Paint them on in the slicer (Bambu Studio: support painting, or a support enforcer in the pocket); they're 1.6 mm tall. Apart from that nothing overhangs more than 45° except the rounded edges of the face in the first 0.7 mm and the 1.6 mm ends of the speaker grille's slots. That's why the top slopes at 30° (the face leans 15°), the screw bosses' ends, the scanner fins' lips and the speaker ring are pointed, and the scanner window and LED slit widen inward on their floor side. PETG or PLA, 0.2 mm layers, 3 walls. |
 | [stl/pantry-scanner-back.stl](stl/pantry-scanner-back.stl) | Back plate. Outside face down, no supports. It only closes the case: the display holds by the adhesive on its glass. |
 | [stl/pantry-scanner-arrow.stl](stl/pantry-scanner-arrow.stl) | Optional: the arrow on the chin, for a second colour. Without it the shell has the arrow engraved 1 mm deep. |
 
@@ -55,12 +55,14 @@ screws with heads up to 8 mm, a little hot glue, a
 
 ## Assembly
 
-1. **Display**: the board comes with adhesive on the glass's black border. Peel its
-   backing and press the glass into the shell, against the inside of the bezel: the side
-   walls hold it left and right, and a rib above and below lines it up. Its two USB-C
-   ports and the 2×13 header go to the left (as you look at the screen). The bezel covers
-   the border and the camera hole; the window shows the picture and 1.5 mm around it. A
-   strip of foam between the board's back and the back plate is an optional backup.
+1. **Display**: from the front. The face has a pocket the size of the glass, as deep as
+   the glass is thick and bevelled at its edge, with an opening the size of the board in
+   its floor. Feed the board through the opening, USB-C ports and 2×13 header to the left
+   (as you look at the screen), peel the backing off the adhesive on the glass's black
+   border and press the glass into the pocket: it sticks to the ledge round the opening
+   and sits flush with the face. Do steps 2 to 5 first if your fingers need the room
+   behind it. A strip of foam between the board's back and the back plate is an optional
+   backup.
 2. **Scanner**: two fins stand in the mouth along the scanner's line of sight, down to the
    floor, with a groove along the top of each. Slide the GM67 in from behind, scan engine
    first and its parts facing the floor, board edges in the grooves, until the engine sits
@@ -121,11 +123,15 @@ posts in mounting ears 108 × 60 mm apart. On the real board the glass didn't fi
 posts missed. The glass is now **114.40 × 66.80 mm** from Guition's
 drawing, with the picture centred in it, and the
 [RetroESP32-P4](https://github.com/giltal/RetroESP32-P4) handheld's case (its screen
-window is 114.7 × 67.0 mm) agrees; it isn't measured on our board or printed yet. That
+window is 114.7 × 67.0 mm) agrees; it isn't measured on our board or printed yet. It goes
+in from the front, flush in a pocket 1.6 mm deep (`glass_t`, the glass's thickness, a
+guess), and the board has to pass through the opening behind it (`pcb_w` × `pcb_h` +
+0.4 mm each side): if your board is bigger than 102.6 × 65.06 mm, or not centred under
+the glass, it won't go through. That
 case also screws the board on by 4 holes 62 × 55 mm apart, which this one leaves unused.
 The board's depth (13.8 mm in all) and where the USB-C ports and the header sit still come
-from that spec sheet and drawing. Measure yours and adjust `panel_*`, `win` and `pcb_*`
-before printing; `depth_top` leaves about 20 mm behind the board for the Dupont plugs and
+from that spec sheet and drawing. Measure yours and adjust `panel_*`, `glass_t` and
+`pcb_*` before printing; `depth_top` leaves about 20 mm behind the board for the Dupont plugs and
 the USB plug. The GM67's size (27.5 × 46.5 mm,
 14 mm tall) and its engine's front (28 × 12 mm) come from GROW's manual; that the engine sits
 flush with the board's end, and how far its plug sticks out, are read off the photo. Check
