@@ -191,8 +191,9 @@ interval:
           else:
             - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x00, 0xFE, 0xEF] }   # silent
 
-  # Scanning off while the UNDO list is open (a stray read would land mid-undo), and at
-  # night while the screen sleeps. A command only when that changes.
+  # At night while the screen sleeps the scanner sleeps too: light off, ~10 mA. While the
+  # UNDO list is open it only stops scanning (a stray read would land mid-undo), so it's
+  # back at once. A command only when that changes; scanner_cmd's 0x00 wakes it first.
   - interval: 1s
     then:
       - lambda: |-
@@ -201,13 +202,15 @@ interval:
           bool night = t.is_valid() && (${night_from} > ${night_until}
               ? (t.hour >= ${night_from} || t.hour < ${night_until})
               : (t.hour >= ${night_from} && t.hour < ${night_until}));
-          bool off = id(undo_open) || (night && id(asleep));
+          enum { ON, OFF, SLEEP };
+          int want = night && id(asleep) ? SLEEP : id(undo_open) ? OFF : ON;
           static int state = -1;
-          if ((int) off == state) return;
-          state = off;
-          ESP_LOGI("gm67", "Scanning %s", off ? (id(undo_open) ? "off: UNDO list open" : "off: night, screen asleep") : "on");
-          id(scanner_cmd)->execute(off ? std::vector<int>{0x04, 0xEA, 0x04, 0x00, 0xFF, 0x0E}    // SCAN_DISABLE
-                                       : std::vector<int>{0x04, 0xE9, 0x04, 0x00, 0xFF, 0x0F});  // SCAN_ENABLE
+          if (want == state) return;
+          state = want;
+          ESP_LOGI("gm67", "Scanner %s", want == SLEEP ? "asleep: night, screen asleep" : want == OFF ? "off: UNDO list open" : "on");
+          id(scanner_cmd)->execute(want == SLEEP ? std::vector<int>{0x04, 0xEB, 0x04, 0x00, 0xFF, 0x0D}   // SLEEP
+                                 : want == OFF   ? std::vector<int>{0x04, 0xEA, 0x04, 0x00, 0xFF, 0x0E}   // SCAN_DISABLE
+                                                 : std::vector<int>{0x04, 0xE9, 0x04, 0x00, 0xFF, 0x0F}); // SCAN_ENABLE
 
 # The DSI PHY's 2.5 V supply.
 esp_ldo:
