@@ -299,6 +299,8 @@ across restarts, and Home Assistant shows them too:
 | Sleep after | Seconds without a touch or scan before the screen dims (60) |
 | Night from / until | Hours when the scanner sleeps along with the screen (23–6) |
 | Scanner beeps on a read | The GM67's own beep; off leaves it to the speaker |
+| Scanner mode | Sensing (light off until something comes in front) or Continuous (light always on, a held code read twice a second) |
+| Scanner sensitivity | How readily Sensing reacts: High, Medium, Low |
 | Location | Shown top right, and where new products go |
 | Backlight, Status LED | |
 

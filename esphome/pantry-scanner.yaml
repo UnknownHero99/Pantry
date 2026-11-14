@@ -189,6 +189,35 @@ number:
     optimistic: true
     restore_value: true
 
+# How the GM67 reads. Sensing (its automatic induction): the light stays dim until
+# something comes in front, then it reads. Continuous: the light is on all the time and a
+# held code is read twice a second. A setting, sent at start and when it changes.
+select:
+  - platform: template
+    id: scanner_mode
+    name: Scanner mode
+    icon: mdi:barcode-scan
+    entity_category: config
+    options: [Sensing, Continuous]
+    initial_option: Sensing
+    optimistic: true
+    restore_value: true
+    on_value:
+      - script.execute: send_scanner_mode
+  # How readily sensing mode takes a change in front of it for a product. Too high and the
+  # screen dimming or waking right beside it can be enough to light it up.
+  - platform: template
+    id: scanner_sensitivity
+    name: Scanner sensitivity
+    icon: mdi:motion-sensor
+    entity_category: config
+    options: [High, Medium, Low]
+    initial_option: Medium
+    optimistic: true
+    restore_value: true
+    on_value:
+      - script.execute: send_scanner_mode
+
 # The scanner's own sounds: its beep on a read (a setting), and on demand.
 button:
   - platform: template
@@ -270,6 +299,24 @@ script:
           std::vector<uint8_t> v(cmd.begin(), cmd.end());
           id(scanner_uart).write_array(v.data(), v.size());
       - delay: 150ms
+  - id: send_scanner_mode
+    then:
+      - if:
+          condition:
+            lambda: 'return id(scanner_mode).current_option() == std::string("Continuous");'
+          then:
+            - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x8A, 0x04, 0xFE, 0x99] }   # continuous
+          else:
+            - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x8A, 0x09, 0xFE, 0x94] }   # automatic induction
+      # its white light and its red aiming line only while it reads, never always on
+      - script.execute: { id: scanner_cmd, cmd: [0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x02, 0x00, 0xFE, 0x32] }
+      - script.execute: { id: scanner_cmd, cmd: [0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x03, 0x00, 0xFE, 0x31] }
+      - lambda: |-
+          auto o = id(scanner_sensitivity).current_option();
+          std::vector<int> c = o == std::string("High") ? std::vector<int>{0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x04, 0x01, 0xFE, 0x2F}
+                             : o == std::string("Low")  ? std::vector<int>{0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x04, 0x03, 0xFE, 0x2D}
+                                                        : std::vector<int>{0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x04, 0x02, 0xFE, 0x2E};
+          id(scanner_cmd)->execute(c);
 
 # The board sets the scanner up itself at start (and daily, in case it was swapped),
 # so a new or reset GM67 needs no setup barcodes: CR after each code, its beep per the
@@ -280,6 +327,7 @@ interval:
     then:
       - script.execute: { id: scanner_cmd, cmd: [0x04, 0xA3, 0x04, 0x00, 0xFF, 0x55] }               # revision
       - script.execute: { id: scanner_cmd, cmd: [0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x05, 0x02, 0xFE, 0x2D] }   # CR after each code
+      - script.execute: send_scanner_mode
       - if:
           condition:
             lambda: "return id(scanner_beeps).state;"
