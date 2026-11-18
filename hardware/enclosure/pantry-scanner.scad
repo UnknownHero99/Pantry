@@ -80,6 +80,11 @@ pcb_t = pick(9, 1.6, 1.6);
 pcb_w = pick(102.6, 123, 100);
 pcb_h = pick(65.06, 74, 60);
 pcb_top = pick((panel_h - pcb_h) / 2, -3.0, 6.5);   // board's top edge below the panel's top
+// The module isn't centred under the glass: the glass overhangs it by as little on the
+// side its ribbon comes out (right, seen from the front) as at the top and bottom. So the
+// glue edge is the same on those three, `glue_edge` from the glass's edge to the opening,
+// and wide only on the left, where the opening follows the board's outline.
+glue_edge = 2.5;
 pcb_holes = pick([],
                  [[3.5, 3.5], [119.5, 3.5], [3.5, 70.5], [119.5, 70.5]],
                  [[3.5, 3.5], [96.5, 3.5], [3.5, 56.5], [96.5, 56.5]]);
@@ -137,6 +142,8 @@ module in_mouth() multmatrix([[1, 0, 0, scr_x], [0, -sin(mouth_angle), cos(mouth
 // A board point (x, y seen from its back) in the face frame.
 function bu(x) = pcb_w / 2 - x;
 function bs(y) = top_margin + pcb_top + y;
+open_r = panel_w / 2 - glue_edge;                   // the module opening: right edge in u,
+open_s = [top_margin + glue_edge, top_margin + panel_h - glue_edge];   // top and bottom in s
 board_w = (front_glass ? 0 : wall) + panel_t;       // the board's front face, in w
 post_wide = board_w + pcb_t + post_clear;
 // The back plate's inside (z = 0) in the face frame, and a face-frame point's height.
@@ -242,7 +249,7 @@ module shell() {
 				translate([-pw / 2 - glass_bevel, top_margin - gap - glass_bevel, -0.02]) cube([pw + 2 * glass_bevel, ph + 2 * glass_bevel, 0.02]);
 				translate([-pw / 2, top_margin - gap, glass_bevel]) cube([pw, ph, 0.02]);
 			}
-			translate([bu(pcb_w) - gap, bs(0) - gap, glass_t - 0.01]) cube([pcb_w + 2 * gap, pcb_h + 2 * gap, ledge_t + 0.02]);
+			translate([bu(pcb_w) - gap, open_s[0], glass_t - 0.01]) cube([open_r - bu(pcb_w) + gap, open_s[1] - open_s[0], ledge_t + 0.02]);
 		}
 		// screen window, edges chamfered 45 degrees (so its top edge needs no bridge)
 		if (!front_glass) in_face() hull() {
@@ -375,7 +382,7 @@ module back() {
 // ── stand-ins for the pictures ───────────────────────────────────────────
 module panel() in_face() if (front_glass) {
 	translate([-panel_w / 2, top_margin, 0.05]) cube([panel_w, panel_h, glass_t - 0.1]);          // glass, in its pocket
-	translate([bu(pcb_w), bs(0), glass_t]) cube([pcb_w, pcb_h, panel_t - glass_t - 0.05]);    // the TFT behind it
+	translate([bu(pcb_w), open_s[0] + gap, glass_t]) cube([open_r - gap - bu(pcb_w), open_s[1] - open_s[0] - 2 * gap, panel_t - glass_t - 0.05]);   // the TFT behind it, through the opening
 } else translate([-panel_w / 2, top_margin, wall]) cube([panel_w, panel_h, panel_t - 0.4]);
 // The board with its tallest parts (and the plugs in it), and the sound and LED modules.
 module pcb() {

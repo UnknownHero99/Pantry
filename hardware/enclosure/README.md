@@ -126,8 +126,11 @@ drawing, with the picture centred in it, and the
 window is 114.7 × 67.0 mm) agrees; it isn't measured on our board or printed yet. It goes
 in from the front, flush in a pocket 1.6 mm deep (`glass_t`, the glass's thickness, a
 guess), and the board has to pass through the opening behind it (`pcb_w` × `pcb_h` +
-0.4 mm each side): if your board is bigger than 102.6 × 65.06 mm, or not centred under
-the glass, it won't go through. That
+0.4 mm on the left). The module isn't centred under the glass: on its ribbon side, the
+right seen from the front, the glass overhangs it as little as at the top and bottom, so
+the glue edge is the same on those three, 2.5 mm from the glass's edge (`glue_edge`), and
+wide only on the left. If your board
+is bigger than 102.6 × 65.06 mm, it won't go through. That
 case also screws the board on by 4 holes 62 × 55 mm apart, which this one leaves unused.
 The board's depth (13.8 mm in all) and where the USB-C ports and the header sit still come
 from that spec sheet and drawing. Measure yours and adjust `panel_*`, `glass_t` and
