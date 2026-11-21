@@ -189,17 +189,18 @@ number:
     optimistic: true
     restore_value: true
 
-# How the GM67 reads. Sensing (its automatic induction): the light stays dim until
+# How the GM67 reads. Sensing (its automatic induction): its lights stay off until
 # something comes in front, then it reads. Continuous: the light is on all the time and a
-# held code is read twice a second. A setting, sent at start and when it changes.
+# held code is read twice a second. Auto: Continuous while the screen is awake, Sensing
+# while it's dimmed, so a product held up to a dark screen still wakes it. A setting.
 select:
   - platform: template
     id: scanner_mode
     name: Scanner mode
     icon: mdi:barcode-scan
     entity_category: config
-    options: [Sensing, Continuous]
-    initial_option: Sensing
+    options: [Auto, Sensing, Continuous]   # Auto first: a saved Sensing (index 0) becomes Auto
+    initial_option: Auto
     optimistic: true
     restore_value: true
     on_value:
@@ -286,6 +287,10 @@ uart:
 
 # Commands to the GM67 (its manual, appendix 6). It may be asleep, so a 0x00 wakes it
 # first; it answers each with a packet the reader above logs instead of scanning.
+# The read mode scanner_power last set for Auto (0 sensing, 1 continuous; -1 none yet).
+globals:
+  - { id: scanner_read_mode, type: int, initial_value: "-1" }
+
 script:
   - id: scanner_cmd
     mode: queued
@@ -299,6 +304,9 @@ script:
           std::vector<uint8_t> v(cmd.begin(), cmd.end());
           id(scanner_uart).write_array(v.data(), v.size());
       - delay: 150ms
+  # The settings, kept by the scanner (written to its memory): the mode it starts in is
+  # Sensing, or Continuous when that's the setting. scanner_power then sets Auto's mode
+  # for the moment, without writing it each time the screen wakes or dims.
   - id: send_scanner_mode
     then:
       - if:
@@ -308,6 +316,7 @@ script:
             - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x8A, 0x04, 0xFE, 0x99] }   # continuous
           else:
             - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x8A, 0x09, 0xFE, 0x94] }   # automatic induction
+      - lambda: "id(scanner_read_mode) = -1;"   # scanner_power sends the mode for now again
       # its white light and its red aiming line only while it reads, never always on
       - script.execute: { id: scanner_cmd, cmd: [0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x02, 0x00, 0xFE, 0x32] }
       - script.execute: { id: scanner_cmd, cmd: [0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x03, 0x00, 0xFE, 0x31] }
@@ -316,6 +325,49 @@ script:
           std::vector<int> c = o == std::string("High") ? std::vector<int>{0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x04, 0x01, 0xFE, 0x2F}
                              : o == std::string("Low")  ? std::vector<int>{0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x04, 0x03, 0xFE, 0x2D}
                                                         : std::vector<int>{0x08, 0xC6, 0x04, 0x08, 0x00, 0xF2, 0x04, 0x02, 0xFE, 0x2E};
+          id(scanner_cmd)->execute(c);
+
+  # At night while the screen sleeps the scanner sleeps too: light off, ~10 mA. While the
+  # UNDO list is open it only stops scanning (a stray read would land mid-undo), so it's
+  # back at once. Otherwise it reads: in Auto, Continuous while the screen is awake and
+  # Sensing while it's dimmed. A command only when something changes; scanner_cmd's 0x00
+  # wakes it first. Run every second, and on a touch straight after waking the screen.
+  - id: scanner_power
+    then:
+      - lambda: |-
+          if (millis() < 15000) return;   // after the setup at start
+          auto t = id(ha_time).now();
+          int from = (int) id(night_from_h).state, until = (int) id(night_until_h).state;
+          bool night = t.is_valid() && from != until && (from > until
+              ? (t.hour >= from || t.hour < until)
+              : (t.hour >= from && t.hour < until));
+          enum { ON, OFF, SLEEP };
+          int want = night && id(asleep) ? SLEEP : id(undo_open) ? OFF : ON;
+          static int state = -1;
+          if (want != state) {
+            state = want;
+            const char *what = want == SLEEP ? "asleep: night, screen asleep" : want == OFF ? "off: UNDO list open" : "on";
+            ESP_LOGI("gm67", "Scanner %s", what);
+            id(scanner_state).publish_state(what);
+            id(scanner_cmd)->execute(want == SLEEP ? std::vector<int>{0x04, 0xEB, 0x04, 0x00, 0xFF, 0x0D}   // SLEEP
+                                   : want == OFF   ? std::vector<int>{0x04, 0xEA, 0x04, 0x00, 0xFF, 0x0E}   // SCAN_DISABLE
+                                                   : std::vector<int>{0x04, 0xE9, 0x04, 0x00, 0xFF, 0x0F}); // SCAN_ENABLE
+            if (want == SLEEP) id(scanner_read_mode) = -1;   // set again once it's awake
+          }
+          if (want == SLEEP || id(scanner_mode).current_option() != std::string("Auto")) return;
+          enum { SENSING, CONTINUOUS };
+          int mode = id(asleep) ? SENSING : CONTINUOUS;
+          if (mode == id(scanner_read_mode)) return;
+          id(scanner_read_mode) = mode;
+          ESP_LOGI("gm67", "Scanner mode for now: %s", mode == CONTINUOUS ? "continuous" : "sensing");
+          // A parameter change for now only (status 0x00, not 0x08: not written to its
+          // memory), with its checksum: the two's complement of the sum of the bytes.
+          std::vector<int> c{0x07, 0xC6, 0x04, 0x00, 0x00, 0x8A, mode == CONTINUOUS ? 0x04 : 0x09};
+          int sum = 0;
+          for (int b : c) sum += b;
+          int check = (0x10000 - sum) & 0xFFFF;
+          c.push_back(check >> 8);
+          c.push_back(check & 0xFF);
           id(scanner_cmd)->execute(c);
 
 # The board sets the scanner up itself at start (and daily, in case it was swapped),
@@ -336,29 +388,10 @@ interval:
           else:
             - script.execute: { id: scanner_cmd, cmd: [0x07, 0xC6, 0x04, 0x08, 0x00, 0x38, 0x00, 0xFE, 0xEF] }   # silent
 
-  # At night while the screen sleeps the scanner sleeps too: light off, ~10 mA. While the
-  # UNDO list is open it only stops scanning (a stray read would land mid-undo), so it's
-  # back at once. A command only when that changes; scanner_cmd's 0x00 wakes it first.
+  # Checked every second as well as on a touch (scanner_power, above).
   - interval: 1s
     then:
-      - lambda: |-
-          if (millis() < 15000) return;   // after the setup above
-          auto t = id(ha_time).now();
-          int from = (int) id(night_from_h).state, until = (int) id(night_until_h).state;
-          bool night = t.is_valid() && from != until && (from > until
-              ? (t.hour >= from || t.hour < until)
-              : (t.hour >= from && t.hour < until));
-          enum { ON, OFF, SLEEP };
-          int want = night && id(asleep) ? SLEEP : id(undo_open) ? OFF : ON;
-          static int state = -1;
-          if (want == state) return;
-          state = want;
-          const char *what = want == SLEEP ? "asleep: night, screen asleep" : want == OFF ? "off: UNDO list open" : "on";
-          ESP_LOGI("gm67", "Scanner %s", what);
-          id(scanner_state).publish_state(what);
-          id(scanner_cmd)->execute(want == SLEEP ? std::vector<int>{0x04, 0xEB, 0x04, 0x00, 0xFF, 0x0D}   // SLEEP
-                                 : want == OFF   ? std::vector<int>{0x04, 0xEA, 0x04, 0x00, 0xFF, 0x0E}   // SCAN_DISABLE
-                                                 : std::vector<int>{0x04, 0xE9, 0x04, 0x00, 0xFF, 0x0F}); // SCAN_ENABLE
+      - script.execute: scanner_power
 
 # The DSI PHY's 2.5 V supply.
 esp_ldo:
@@ -438,6 +471,7 @@ touchscreen:
     update_interval: 50ms
     on_touch:
       - script.execute: wake
+      - script.execute: scanner_power   # in the dark: the scanner wakes with the screen
 
 display:
   - platform: mipi_dsi
